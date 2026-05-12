@@ -1,0 +1,405 @@
+<header class="sticky top-0 z-50 w-full border-b-2 border-black bg-white/95 backdrop-blur">
+	<div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+		<a
+			href="/"
+			class="nav-logo-link flex items-center gap-2 group"
+			aria-label="返回首页"
+		>
+			<span class="relative inline-flex">
+				<div class="bg-black text-white p-1.5 rounded-sm group-hover:rotate-3 transition-transform">
+					<!-- turtle icon -->
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path
+							d="m12 10 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a8 8 0 1 0-16 0v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3l2-4h4Z" />
+						<path d="M4.82 7.9 8 10" />
+						<path d="M15.18 7.9 12 10" />
+						<path d="M16.93 10H20a2 2 0 0 1 0 4H2" />
+					</svg>
+				</div>
+
+				<span
+					class="pointer-events-none absolute left-1/2 top-full z-[80] mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2.5 py-1.5 text-xs font-mono text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
+				>
+					返回首页
+
+					<span
+						class="absolute left-1/2 -top-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-black"
+						aria-hidden="true"
+					></span>
+				</span>
+			</span>
+
+			<span class="font-serif font-bold text-xl tracking-tight">TURTLE SOUP</span>
+		</a>
+
+		<nav class="flex items-center gap-4">
+
+			<div class="relative" id="siteSupportMenu">
+				<button
+					type="button"
+					id="siteSupportBtn"
+					class="btn-sketch inline-flex items-center gap-2 font-mono text-xs"
+					aria-label="交流与支持"
+					aria-expanded="false"
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="m11 17 2 2a1 1 0 1 0 3-3" />
+						<path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" />
+						<path d="m21 3 1 11h-2" />
+						<path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" />
+						<path d="M3 4h8" />
+					</svg>
+
+					<span class="hidden md:inline">交流与支持</span>
+				</button>
+
+				<div
+					id="siteSupportPanel"
+					class="hidden absolute right-0 top-full z-[90] mt-3 w-[min(92vw,380px)] rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_18px_50px_rgba(0,0,0,0.14)]"
+				>
+					<div class="mb-3">
+						<div class="font-serif text-lg font-bold text-black">
+							交流与支持
+						</div>
+						<div class="mt-1 text-xs font-mono text-neutral-500">
+							加入交流、支持维护、查看开源代码
+						</div>
+					</div>
+
+					<div class="space-y-3">
+						<button
+							type="button"
+							id="copyQQGroupBtn"
+							class="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 text-left transition hover:border-black hover:bg-white"
+							data-copy-text="684121136"
+						>
+							<div class="flex items-start gap-3">
+								<span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+									<!-- QQ group icon -->
+<svg
+										width="19"
+										height="19"
+										viewBox="0 0 1024 1024"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M824.8 613.2c-16-51.4-34.4-94.6-62.7-165.3C766.5 262.2 689.3 112 511.5 112 331.7 112 256.2 265.2 261 447.9c-28.4 70.8-46.7 113.7-62.7 165.3-34 109.5-23 154.8-14.6 155.8 18 2.2 70.1-82.4 70.1-82.4 0 49 25.2 112.9 79.8 159-26.4 8.1-85.7 29.9-71.6 53.8 11.4 19.3 196.2 12.3 249.5 6.3 53.3 6 238.1 13 249.5-6.3 14.1-23.8-45.3-45.7-71.6-53.8 54.6-46.2 79.8-110.1 79.8-159 0 0 52.1 84.6 70.1 82.4 8.5-1.1 19.5-46.4-14.5-155.8z" />
+									</svg>
+								</span>
+
+								<span class="min-w-0 flex-1">
+									<span class="block font-mono text-sm font-bold text-black">
+										交流QQ群：684121136
+									</span>
+									<span class="mt-1 block text-xs leading-relaxed text-neutral-500">
+										复制群号，加入群聊交流、提供网站建议、创作者交流，或者查看当前网站优化进度。
+									</span>
+								</span>
+							</div>
+						</button>
+
+						<a
+							href="https://www.ifdian.net/a/lumosWinnie"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="block rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition hover:border-black hover:bg-white"
+						>
+							<div class="flex items-start gap-3">
+								<span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+									<!-- donate icon -->
+<svg
+										width="19"
+										height="19"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" />
+										<path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" />
+										<path d="m2 16 6 6" />
+										<circle cx="16" cy="9" r="2.9" />
+										<circle cx="6" cy="5" r="3" />
+									</svg>
+								</span>
+
+								<span class="min-w-0 flex-1">
+									<span class="block font-mono text-sm font-bold text-black">
+										打赏站主
+									</span>
+									<span class="mt-1 block text-xs leading-relaxed text-neutral-500">
+										服务器和 AI API 接口目前由站主自费维护，可以前往爱发电支持一下。
+									</span>
+								</span>
+							</div>
+						</a>
+
+						<a
+							href="https://github.com/Lumos0109/turtle-soup.git"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="block rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition hover:border-black hover:bg-white"
+						>
+							<div class="flex items-start gap-3">
+								<span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+									<!-- git repository icon -->
+<svg
+										width="19"
+										height="19"
+										viewBox="0 0 1024 1024"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M511.6 76.3C264.3 76.2 64 276.4 64 523.5 64 718.9 189.3 885 363.8 946c23.5 5.9 19.9-10.8 19.9-22.2v-77.5c-135.7 15.9-141.2-73.9-150.3-88.9C215 726 171.5 718 184.5 703c30.9-15.9 62.4 4 98.9 57.9 26.4 39.1 77.9 32.5 104 26 5.7-23.5 17.9-44.5 34.7-60.8-140.6-25.2-199.2-111-199.2-213 0-49.5 16.3-95 48.3-131.7-20.4-60.5 1.9-112.3 4.9-120 58.1-5.2 118.5 41.6 123.2 45.3 33-8.9 70.7-13.6 112.9-13.6 42.4 0 80.2 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.3-43.9 2.9 7.7 24.7 58.3 5.5 118 32.4 36.8 48.9 82.7 48.9 132.3 0 102.2-59 188.1-200 212.9 23.5 23.2 38.1 55.4 38.1 91v112.5c0.8 9 0 17.9 15 17.9 177.1-59.7 304.6-227 304.6-424.1 0-247.2-200.4-447.3-447.5-447.3z" />
+									</svg>
+								</span>
+
+								<span class="min-w-0 flex-1">
+									<span class="block font-mono text-sm font-bold text-black">
+										GitHub 开源仓库
+									</span>
+									<span class="mt-1 block text-xs leading-relaxed text-neutral-500">
+										查看项目源码、提交 issue，或者关注网站功能更新。
+									</span>
+								</span>
+							</div>
+						</a>
+					</div>
+				</div>
+			</div>
+
+			<% if (currentUser) { %>
+				<!-- NEW SOUP（原版是 outline 风格按钮 + plus icon，移动端隐藏） -->
+				<a href="/soups/create"
+					class="btn-sketch hidden sm:inline-flex items-center gap-2 font-mono text-xs">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M12 5v14M5 12h14" />
+					</svg>
+					新建海龟汤
+				</a>
+
+				<a href="/my"
+					class="btn-sketch hidden sm:inline-flex items-center gap-2 font-mono text-xs">
+					我的汤库
+				</a>
+
+				<a href="/messages"
+					class="btn-sketch hidden sm:inline-flex items-center gap-2 font-mono text-xs">
+					消息
+					<% if ((unreadCount || 0) > 0) { %>
+						<span class="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1 bg-black text-white rounded-full text-[10px]">
+							<%= unreadCount > 99 ? '99+' : unreadCount %>
+						</span>
+					<% } %>
+				</a>
+
+				<div class="h-6 w-px bg-neutral-200"></div>
+
+				<!-- 用户区：用户名 + 退出图标按钮 -->
+				<div class="flex items-center gap-3">
+					<span class="text-sm font-medium hidden sm:inline-block">
+						<%= currentUser.username %>
+					</span>
+
+				<form method="post" action="/auth/logout" style="display:inline;">
+					<button
+						type="submit"
+						class="group relative w-9 h-9 flex items-center justify-center hover:bg-neutral-100 rounded-full transition"
+						aria-label="退出登录"
+					>
+						<!-- logout icon -->
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+							stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+							<path d="M16 17l5-5-5-5" />
+							<path d="M21 12H9" />
+						</svg>
+
+						<span
+							class="pointer-events-none absolute left-1/2 top-full z-[80] mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2.5 py-1.5 text-xs font-mono text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+						>
+							退出登录
+
+							<span
+								class="absolute left-1/2 -top-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-black"
+								aria-hidden="true"
+							></span>
+						</span>
+					</button>
+				</form>
+				</div>
+
+				<% if (currentUser.role==='admin' ) { %>
+					<a href="/admin" class="btn-sketch font-mono text-xs">后台</a>
+					<% } %>
+
+						<% } else { %>
+							<!-- 登录前：ADMIN + LOGIN（原版布局） -->
+							<a href="/admin/login"
+								class="flex items-center font-mono text-xs text-neutral-500 hover:text-black">
+								<!-- shield icon -->
+								<svg class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+									stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+								</svg>
+								ADMIN
+							</a>
+
+							<a href="/auth/login" class="btn-sketch-primary">LOGIN</a>
+							<% } %>
+		</nav>
+	</div>
+	<% if (currentUser) { %>
+		<!-- 手机端快捷菜单：避免顶部导航被挤爆 -->
+		<div class="sm:hidden border-t border-neutral-200 bg-white">
+			<div class="max-w-5xl mx-auto px-4 py-2 overflow-x-auto">
+				<div class="flex items-center gap-2 min-w-max">
+					<a href="/soups/create"
+						class="btn-sketch font-mono text-xs">
+						新建海龟汤
+					</a>
+
+					<a href="/my"
+						class="btn-sketch font-mono text-xs">
+						我的汤库
+					</a>
+
+					<a href="/messages"
+						class="btn-sketch font-mono text-xs">
+						消息<% if ((unreadCount || 0) > 0) { %>（<%= unreadCount > 99 ? '99+' : unreadCount %>）<% } %>
+					</a>
+
+					<% if (currentUser.role==='admin' ) { %>
+						<a href="/admin"
+							class="btn-sketch font-mono text-xs">
+							后台
+						</a>
+						<% } %>
+				</div>
+			</div>
+		</div>
+		<% } %>
+</header>
+
+<script>
+(function () {
+	const wrap = document.getElementById('siteSupportMenu');
+	const btn = document.getElementById('siteSupportBtn');
+	const panel = document.getElementById('siteSupportPanel');
+	const copyBtn = document.getElementById('copyQQGroupBtn');
+
+	if (!wrap || !btn || !panel) return;
+
+	function showToast(message) {
+		let toast = document.getElementById('nb-global-toast');
+
+		if (!toast) {
+			toast = document.createElement('div');
+			toast.id = 'nb-global-toast';
+			toast.className = 'fixed left-1/2 bottom-6 z-[120] -translate-x-1/2 rounded bg-black px-3 py-2 font-mono text-xs text-white opacity-0 transition-opacity';
+			document.body.appendChild(toast);
+		}
+
+		toast.textContent = message;
+		toast.classList.remove('opacity-0');
+		toast.classList.add('opacity-100');
+
+		window.clearTimeout(toast._timer);
+		toast._timer = window.setTimeout(() => {
+			toast.classList.add('opacity-0');
+			toast.classList.remove('opacity-100');
+		}, 1800);
+	}
+
+	async function copyText(text) {
+		if (navigator.clipboard && window.isSecureContext) {
+			await navigator.clipboard.writeText(text);
+			return;
+		}
+
+		const textarea = document.createElement('textarea');
+		textarea.value = text;
+		textarea.setAttribute('readonly', '');
+		textarea.style.position = 'fixed';
+		textarea.style.left = '-9999px';
+		textarea.style.top = '-9999px';
+
+		document.body.appendChild(textarea);
+		textarea.focus();
+		textarea.select();
+
+		const ok = document.execCommand('copy');
+		document.body.removeChild(textarea);
+
+		if (!ok) throw new Error('copy failed');
+	}
+
+	function openPanel() {
+		panel.classList.remove('hidden');
+		btn.setAttribute('aria-expanded', 'true');
+	}
+
+	function closePanel() {
+		panel.classList.add('hidden');
+		btn.setAttribute('aria-expanded', 'false');
+	}
+
+	function togglePanel() {
+		if (panel.classList.contains('hidden')) {
+			openPanel();
+		} else {
+			closePanel();
+		}
+	}
+
+	btn.addEventListener('click', (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		togglePanel();
+	});
+
+	if (copyBtn) {
+		copyBtn.addEventListener('click', async (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const text = copyBtn.getAttribute('data-copy-text') || '684121136';
+
+			try {
+				await copyText(text);
+				showToast('已复制QQ群号：' + text);
+			} catch (error) {
+				console.error(error);
+				showToast('复制失败，请手动复制群号：' + text);
+			}
+		});
+	}
+
+	document.addEventListener('click', (event) => {
+		if (!wrap.contains(event.target)) {
+			closePanel();
+		}
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			closePanel();
+		}
+	});
+})();
+</script>

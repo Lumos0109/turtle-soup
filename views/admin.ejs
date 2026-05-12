@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <%- include('partials/head', { title }) %>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <div class="flex items-start justify-between gap-6 mb-8">
+      <div>
+        <h1 class="font-serif font-bold text-3xl">管理后台</h1>
+        <p class="mt-2 font-mono text-xs text-neutral-500">审核公开汤 · 管理公开汤池 · 管理标签 · 管理公告 · 管理表情 · 管理用户 · 处理反馈</p>
+      </div>
+      <a href="/" class="btn-sketch">返回</a>
+    </div>
+
+    <% if (message) { %>
+      <div class="mb-6 border-2 border-black bg-neutral-50 p-3 font-mono text-xs shadow-[6px_6px_0px_0px_rgba(0,0,0,0.12)]">
+        <span class="font-bold">提示：</span><%= message %>
+      </div>
+    <% } %>
+
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+      <a href="/admin?tab=review" class="btn-sketch <%= tab==='review'?'bg-black text-white':'' %>">审核</a>
+      <a href="/admin?tab=publicSoups" class="btn-sketch <%= tab==='publicSoups'?'bg-black text-white':'' %>">公开汤池</a>
+      <a href="/admin?tab=tags" class="btn-sketch <%= tab==='tags'?'bg-black text-white':'' %>">标签</a>
+      <a href="/admin?tab=announcements" class="btn-sketch <%= tab==='announcements'?'bg-black text-white':'' %>">公告</a>
+      <a href="/admin?tab=stickers" class="btn-sketch <%= tab==='stickers'?'bg-black text-white':'' %>">表情</a>
+      <a href="/admin?tab=users" class="btn-sketch <%= tab==='users'?'bg-black text-white':'' %>">用户</a>
+      <a href="/admin/feedback" class="btn-sketch">反馈</a>
+    </div>
+
+    <% if (tab === 'review') { %>
+      <div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-serif font-bold text-xl">待审核公开汤</div>
+          <div class="font-mono text-xs text-neutral-500">共 <%= pendingSoups.length %> 条</div>
+        </div>
+
+        <% if (pendingSoups.length === 0) { %>
+          <div class="text-center text-neutral-400 italic font-mono text-xs py-10">暂无待审核内容</div>
+        <% } else { %>
+          <div class="space-y-4">
+            <% pendingSoups.forEach((s)=> { %>
+              <div class="border border-neutral-200 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <div class="font-serif font-bold"><%= s.title %></div>
+                    <div class="mt-1 font-mono text-xs text-neutral-500">作者：<%= s.author_name %> · <%= s.created_at %> · #<%= s.id %></div>
+                  </div>
+                  <a class="btn-sketch" href="/soups/<%= s.id %>" target="_blank">预览</a>
+                </div>
+
+                <div class="mt-4 flex flex-col sm:flex-row sm:items-center gap-2">
+                  <form method="post" action="/admin/soups/<%= s.id %>/approve">
+                    <button type="submit" class="btn-sketch-primary">通过</button>
+                  </form>
+
+                  <form method="post" action="/admin/soups/<%= s.id %>/reject" class="flex-1 flex items-center gap-2">
+                    <input name="note" class="h-10 flex-1 border-2 border-black px-3 outline-none font-mono text-xs" placeholder="驳回原因（可选，最多120字）" maxlength="120" />
+                    <button type="submit" class="btn-sketch">驳回</button>
+                  </form>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+
+    <% if (tab === 'publicSoups') { %>
+      <div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-serif font-bold text-xl">公开汤池内容</div>
+          <div class="font-mono text-xs text-neutral-500">共 <%= publicSoups.length %> 条</div>
+        </div>
+
+        <form method="get" action="/admin" class="flex items-center gap-2 mb-6">
+          <input type="hidden" name="tab" value="publicSoups" />
+          <input name="qSoup" value="<%= qSoup || '' %>" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="搜索标题 / 汤面" />
+          <button type="submit" class="btn-sketch-primary h-12 px-6">搜索</button>
+        </form>
+
+        <% if (publicSoups.length === 0) { %>
+          <div class="text-center text-neutral-400 italic font-mono text-xs py-10">暂无公开汤</div>
+        <% } else { %>
+          <div class="space-y-3">
+            <% publicSoups.forEach((s)=> { %>
+              <div class="border border-neutral-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="flex-1">
+                  <div class="font-serif font-bold"><%= s.title %></div>
+                  <div class="mt-1 font-mono text-xs text-neutral-500">作者：<%= s.author_name %> · ❤️ <%= s.like_count %> · #<%= s.id %></div>
+                </div>
+                <a class="btn-sketch" href="/soups/<%= s.id %>" target="_blank">预览</a>
+                <a class="btn-sketch" href="/admin/soups/<%= s.id %>/edit">编辑</a>
+                <form method="post" action="/admin/soups/<%= s.id %>/delete" onsubmit="return confirm('确认删除这碗海龟汤？删除后不可恢复。');">
+                  <button type="submit" class="btn-sketch">删除</button>
+                </form>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+
+    <% if (tab === 'tags') { %>
+      <div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-serif font-bold text-xl">标签管理</div>
+          <div class="font-mono text-xs text-neutral-500">共 <%= tags.length %> 个</div>
+        </div>
+
+        <form method="post" action="/admin/tags" class="flex items-center gap-2 mb-6">
+          <input name="name" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="新增标签名称（例如：悬疑）" maxlength="20" />
+          <button type="submit" class="btn-sketch-primary h-12 px-6">新增</button>
+        </form>
+
+        <div class="space-y-3">
+          <% tags.forEach((t)=> { %>
+            <div class="border border-neutral-200 p-4">
+              <form method="post" action="/admin/tags/<%= t.id %>/update" class="grid grid-cols-1 md:grid-cols-[1fr_120px_auto_auto] gap-3 items-center">
+                <div>
+                  <div class="font-mono text-xs text-neutral-500 mb-1">标签名</div>
+                  <input name="name" value="<%= t.name %>" class="h-10 w-full border-2 border-black px-3 outline-none font-mono text-xs" maxlength="20" />
+                </div>
+
+                <div>
+                  <div class="font-mono text-xs text-neutral-500 mb-1">排序</div>
+                  <input name="sort_order" value="<%= t.sort_order %>" type="number" class="h-10 w-full border-2 border-black px-3 outline-none font-mono text-xs" />
+                </div>
+
+                <label class="inline-flex items-center gap-2 font-mono text-xs">
+                  <input type="checkbox" name="is_hidden" value="1" <%= t.is_hidden ? 'checked' : '' %> />
+                  隐藏
+                </label>
+
+                <button type="submit" class="btn-sketch-primary h-10 px-4">保存</button>
+              </form>
+
+              <form method="post" action="/admin/tags/<%= t.id %>/delete" class="mt-2" onsubmit="return confirm('确认删除该标签？（不会删除海龟汤，仅删除标签与关联）');">
+                <button type="submit" class="btn-sketch">删除标签 #<%= t.id %></button>
+              </form>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <% if (tab === 'announcements') { %>
+      <div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-serif font-bold text-xl">公告管理</div>
+          <div class="font-mono text-xs text-neutral-500">共 <%= announcements.length %> 条</div>
+        </div>
+
+        <form method="post" action="/admin/announcements" class="border border-neutral-200 p-4 mb-6 space-y-3">
+          <div class="font-serif font-bold">新增公告</div>
+          <input name="title" class="w-full h-12 border-2 border-black px-3 outline-none" placeholder="公告标题（最多60字）" maxlength="60" />
+          <textarea name="content" class="w-full min-h-[120px] border-2 border-black p-3 outline-none" placeholder="公告完整内容（最多1000字）" maxlength="1000"></textarea>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <label class="inline-flex items-center gap-2 font-mono text-xs">
+              <input type="checkbox" name="set_active" value="1" />
+              新增后设为首页展示公告
+            </label>
+            <button type="submit" class="btn-sketch-primary h-12 px-6">新增公告</button>
+          </div>
+        </form>
+
+        <% if (!announcements || announcements.length === 0) { %>
+          <div class="text-center text-neutral-400 italic font-mono text-xs py-10">暂无公告</div>
+        <% } else { %>
+          <div class="space-y-4">
+            <% announcements.forEach((a)=> { %>
+              <div class="border border-neutral-200 p-4">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                  <div class="font-mono text-xs text-neutral-500">#<%= a.id %> · <%= a.updated_at %></div>
+                  <% if (a.is_active === 1) { %>
+                    <span class="font-mono text-xs bg-black text-white px-2 py-1">首页展示中</span>
+                  <% } %>
+                </div>
+
+                <form method="post" action="/admin/announcements/<%= a.id %>/update" class="space-y-3">
+                  <input name="title" value="<%= a.title %>" class="w-full h-10 border-2 border-black px-3 outline-none" maxlength="60" />
+                  <textarea name="content" class="w-full min-h-[100px] border-2 border-black p-3 outline-none" maxlength="1000"><%= a.content %></textarea>
+                  <button type="submit" class="btn-sketch-primary">保存</button>
+                </form>
+
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                  <form method="post" action="/admin/announcements/<%= a.id %>/active">
+                    <button type="submit" class="btn-sketch">设为首页展示</button>
+                  </form>
+                  <form method="post" action="/admin/announcements/<%= a.id %>/delete" onsubmit="return confirm('确认删除这条公告？');">
+                    <button type="submit" class="btn-sketch">删除</button>
+                  </form>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+
+    <% if (tab === 'stickers') { %>
+      <div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-serif font-bold text-xl">房间表情包</div>
+          <div class="font-mono text-xs text-neutral-500">共 <%= stickers.length %> 个</div>
+        </div>
+
+        <form method="post" action="/admin/stickers" enctype="multipart/form-data" class="border border-neutral-200 p-4 mb-6 space-y-3">
+          <div class="font-serif font-bold">上传表情</div>
+          <div class="font-mono text-xs text-neutral-500">仅支持 PNG / JPG，单张最大 1MB。删除后不会再出现在房间表情面板里，已发出的历史表情会尽量保留显示。</div>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input name="sticker" type="file" accept="image/png,image/jpeg" class="block flex-1 text-sm" required />
+            <button type="submit" class="btn-sketch-primary h-12 px-6">上传</button>
+          </div>
+        </form>
+
+        <% if (!stickers || stickers.length === 0) { %>
+          <div class="text-center text-neutral-400 italic font-mono text-xs py-10">暂无表情</div>
+        <% } else { %>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <% stickers.forEach((sticker)=> { %>
+              <div class="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                <div class="flex h-28 items-center justify-center rounded-xl bg-white border border-neutral-100">
+                  <img src="<%= sticker.url %>" alt="<%= sticker.original_name || '表情' %>" class="max-h-24 max-w-24 object-contain" />
+                </div>
+                <div class="mt-2 truncate font-mono text-[11px] text-neutral-500" title="<%= sticker.original_name || sticker.filename %>">
+                  #<%= sticker.id %> · <%= sticker.original_name || sticker.filename %>
+                </div>
+                <form method="post" action="/admin/stickers/<%= sticker.id %>/delete" class="mt-3" onsubmit="return confirm('确认删除这个表情？删除后不会再出现在房间表情面板里。');">
+                  <button type="submit" class="btn-sketch w-full justify-center">删除</button>
+                </form>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+
+    <% if (tab === 'users') { %>
+      <div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-serif font-bold text-xl">用户管理</div>
+          <div class="font-mono text-xs text-neutral-500">共 <%= users.length %> 个普通用户</div>
+        </div>
+
+        <form method="get" action="/admin" class="flex items-center gap-2 mb-6">
+          <input type="hidden" name="tab" value="users" />
+          <input name="qUser" value="<%= qUser || '' %>" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="搜索用户名（支持模糊）" />
+          <button type="submit" class="btn-sketch-primary h-12 px-6">搜索</button>
+        </form>
+
+        <% if (users.length === 0) { %>
+          <div class="text-center text-neutral-400 italic font-mono text-xs py-10">暂无用户</div>
+        <% } else { %>
+          <div class="space-y-3">
+            <% users.forEach((u)=> { %>
+              <div class="border border-neutral-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="flex-1">
+                  <div class="font-mono text-sm"><%= u.username %> <span class="text-neutral-400">#<%= u.id %></span></div>
+                  <div class="mt-1 font-mono text-xs text-neutral-500">注册时间：<%= u.created_at %></div>
+                </div>
+
+                <div class="font-mono text-xs">
+                  状态：
+                  <% if (u.is_disabled === 1) { %>
+                    <span class="text-red-600">已禁用</span>
+                  <% } else { %>
+                    <span class="text-green-600">正常</span>
+                  <% } %>
+                </div>
+
+                <form method="post" action="/admin/users/<%= u.id %>/toggle" onsubmit="return confirm('<%= u.is_disabled===1 ? '确认解禁该用户？' : '确认禁用该用户？' %>');">
+                  <button type="submit" class="btn-sketch"><%= u.is_disabled === 1 ? '解禁' : '禁用' %></button>
+                </form>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </main>
+</body>
+</html>

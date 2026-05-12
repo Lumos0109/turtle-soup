@@ -1,0 +1,178 @@
+/* public/css/site.css
+ * 目标：复刻参考 UI 的黑白灰 sketch 风格：
+ * - 点阵背景
+ * - 粗黑边框 + 直角卡片
+ * - 阴影“压印感”
+ * - 大衬线标题（Lora）
+ */
+
+:root {
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-serif: "Lora", Georgia, "Times New Roman", serif;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: #111;
+    background: #fff;
+
+    /* 点阵背景：参考 UI 同款感觉 */
+    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+/* 标题统一用衬线 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-serif);
+}
+
+/* ===== sketch 按钮：粗边框 + 阴影 ===== */
+.btn-sketch {
+    font-family: "Chiron GoRound TC", "Microsoft YaHei", "YouYuan", "幼圆", sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    border: 2px solid #000;
+    background: #fff;
+    color: #000;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all .2s ease;
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.btn-sketch:hover {
+    background: #000;
+    color: #fff;
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.btn-sketch:active {
+    transform: translateY(2px);
+    box-shadow: none;
+}
+
+.btn-sketch[disabled] {
+    opacity: .5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* 黑底主按钮（LOGIN 这种） */
+.btn-sketch-primary {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    border: 2px solid #000;
+    background: #000;
+    color: #fff;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all .2s ease;
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, .3);
+}
+
+.btn-sketch-primary:hover {
+    background: #222;
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, .3);
+}
+
+.btn-sketch-primary:active {
+    transform: translateY(2px);
+    box-shadow: none;
+}
+
+/* ===== 翻转卡片辅助类（给详情页用） ===== */
+.perspective-1000 {
+    perspective: 1000px;
+}
+
+.transform-style-3d {
+    transform-style: preserve-3d;
+}
+
+.backface-hidden {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+.rotate-y-180 {
+    transform: rotateY(180deg);
+}
+
+/* 自定义滚动条（细灰） */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e5e5e5;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a3a3a3;
+}
+
+/* ===== 详情页翻转卡片：手机滚动最终修复版 ===== */
+
+/* 手机和电脑都给详情卡片一个明确高度，避免 absolute + 3D + flex 下滚动失效 */
+.soup-flip-root {
+    height: min(620px, 70vh);
+    min-height: 420px;
+}
+
+/* 手机端加高一些，汤面/汤底才有足够可滚动空间 */
+@media (max-width: 640px) {
+    .soup-flip-root {
+        height: 72svh;
+        min-height: 460px;
+        max-height: 680px;
+    }
+}
+
+/* 正反面用 grid：正文区域占剩余空间，底部固定 */
+.soup-face {
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
+}
+
+/* 真正可滚动的汤面/汤底区域 */
+.soup-card-scroll {
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    padding-right: 0.5rem;
+}
+
+/* 底部栏固定在卡片底部 */
+.soup-card-footer {
+    min-height: max-content;
+}
+
+/* 清除因为 whitespace-pre-wrap + EJS 缩进造成的视觉缩进 */
+.soup-card-scroll p {
+    margin: 0;
+    text-indent: 0;
+}

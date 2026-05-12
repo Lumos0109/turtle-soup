@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+	<%- include('partials/head') %>
+</head>
+
+<body>
+	<%- include('partials/navbar') %>
+
+	<style>
+	.nb-tooltip {
+		position: relative;
+	}
+
+	.nb-tooltip::after,
+	.nb-tooltip::before {
+		pointer-events: none;
+		position: absolute;
+		left: 50%;
+		z-index: 90;
+		opacity: 0;
+		transition: opacity 150ms ease, transform 150ms ease;
+	}
+
+	.nb-tooltip::after {
+		content: attr(data-tip);
+		top: 100%;
+		margin-top: 0.5rem;
+		transform: translateX(-50%) translateY(-4px);
+		white-space: nowrap;
+		border-radius: 0.375rem;
+		background: #000;
+		padding: 0.375rem 0.625rem;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+		font-size: 0.75rem;
+		line-height: 1;
+		color: #fff;
+		box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+	}
+
+	.nb-tooltip::before {
+		content: "";
+		top: 100%;
+		margin-top: 0.25rem;
+		width: 0.5rem;
+		height: 0.5rem;
+		transform: translateX(-50%) translateY(-4px) rotate(45deg);
+		background: #000;
+	}
+
+	.nb-tooltip:hover::after,
+	.nb-tooltip:focus-visible::after {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+	}
+
+	.nb-tooltip:hover::before,
+	.nb-tooltip:focus-visible::before {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0) rotate(45deg);
+	}
+
+	.nb-tooltip[data-tip-side="top"]::after {
+		top: auto;
+		bottom: 100%;
+		margin-top: 0;
+		margin-bottom: 0.5rem;
+		transform: translateX(-50%) translateY(4px);
+	}
+
+	.nb-tooltip[data-tip-side="top"]::before {
+		top: auto;
+		bottom: 100%;
+		margin-top: 0;
+		margin-bottom: 0.25rem;
+		transform: translateX(-50%) translateY(4px) rotate(45deg);
+	}
+
+	.nb-tooltip[data-tip-side="top"]:hover::after,
+	.nb-tooltip[data-tip-side="top"]:focus-visible::after {
+		transform: translateX(-50%) translateY(0);
+	}
+
+	.nb-tooltip[data-tip-side="top"]:hover::before,
+	.nb-tooltip[data-tip-side="top"]:focus-visible::before {
+		transform: translateX(-50%) translateY(0) rotate(45deg);
+	}
+</style>
+
+		<main class="max-w-5xl mx-auto px-4 py-8">
+			<div class="max-w-3xl mx-auto space-y-12">
+				<section>
+					<%
+						const sharePath = soup.share_code
+							? ('/share/' + soup.share_code)
+							: ((soup.visibility === 'public' && soup.status === 'approved') ? ('/soups/' + soup.id) : null);
+					%>
+					<div class="mb-6 flex flex-wrap items-center gap-2 text-sm text-neutral-500 font-mono">
+						<span class="px-2 py-0.5 border border-neutral-300 rounded text-xs bg-neutral-100">#<%= soup.id %></span>
+						<span>作者：<%= soup.author_name || 'Unknown' %></span>
+
+						<button type="button" class="js-soup-export-btn nb-tooltip inline-flex items-center justify-center rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-200 hover:text-black transition-colors" data-tip="导出" aria-label="导出">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M12 15V3"/>
+								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+								<path d="m7 10 5 5 5-5"/>
+							</svg>
+						</button>
+
+						<% if (sharePath) { %>
+							<button type="button" class="js-share-btn nb-tooltip inline-flex items-center justify-center rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-200 hover:text-black transition-colors" data-tip="复制分享链接" aria-label="复制分享链接" data-share-path="<%= sharePath %>">
+								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/>
+									<path d="m21 3-9 9"/>
+									<path d="M15 3h6v6"/>
+								</svg>
+							</button>
+						<% } %>
+
+						<button
+							type="button"
+							class="js-rate-btn nb-tooltip inline-flex items-center gap-1 rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-200 hover:text-black transition-colors"
+							data-tip="打分"
+							data-user-score="<%= currentUserRating || '' %>"
+							aria-label="打分"
+						>
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.751a.53.53 0 0 1 .294.904l-3.738 3.644a2.12 2.12 0 0 0-.611 1.878l.882 5.145a.53.53 0 0 1-.77.559l-4.62-2.429a2.12 2.12 0 0 0-1.973 0l-4.62 2.429a.53.53 0 0 1-.77-.56l.882-5.144a2.12 2.12 0 0 0-.611-1.878L2.16 9.79a.53.53 0 0 1 .294-.904l5.165-.751a2.12 2.12 0 0 0 1.597-1.16z" />
+							</svg>
+							<span>打分</span>
+						</button>
+
+						<button type="button" class="js-facilitator-open nb-tooltip inline-flex items-center gap-1 rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-200 hover:text-black transition-colors" data-tip="AI主持人" aria-label="AI主持人">
+							<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M12 8V4H8"/>
+								<rect width="16" height="12" x="4" y="8" rx="2"/>
+								<path d="M2 14h2"/>
+								<path d="M20 14h2"/>
+								<path d="M15 13v2"/>
+								<path d="M9 13v2"/>
+							</svg>
+							<span>AI主持人</span>
+						</button>
+
+					<% if (soup.has_host_manual && (soup.host_manual || '').trim()) { %>
+						<button type="button" class="js-host-manual-btn nb-tooltip inline-flex items-center gap-1 rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-200 hover:text-black transition-colors" data-tip="主持人手册" aria-label="主持人手册">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M12 7v14"/>
+								<path d="M16 12h2"/>
+								<path d="M16 8h2"/>
+								<path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+								<path d="M6 12h2"/>
+								<path d="M6 8h2"/>
+							</svg>
+							<span>主持人手册</span>
+						</button>
+					<% } %>
+					</div>
+
+					<!-- 翻转卡片：点击整张卡翻面 -->
+					<div class="relative w-full perspective-1000 group js-flip-root soup-flip-root"
+						data-soup-id="<%= soup.id %>">
+						<div
+							class="w-full h-full relative transform-style-3d transition-all duration-700 js-flip-inner">
+							<!-- 正面：汤面 -->
+							<div class="soup-face absolute inset-0 backface-hidden bg-white border-2 border-black p-6 sm:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] group-hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-shadow">
+								<div class="soup-card-scroll custom-scrollbar">
+									<div class="flex items-start justify-between gap-3">
+										<h3 class="text-xl sm:text-2xl font-serif font-bold leading-tight">
+											<%= soup.title %>
+										</h3>
+										<% let badgeText='公开' ; if (soup.visibility==='private' && soup.status==='draft'
+											) badgeText='草稿' ; else if (soup.visibility==='private' ) badgeText='私密' ;
+											else if (soup.visibility==='public' && soup.status==='pending' )
+											badgeText='待审核' ; else if (soup.visibility==='public' &&
+											soup.status==='rejected' ) badgeText='已驳回' ; %>
+
+											<span
+												class="inline-flex items-center px-2 py-1 rounded border border-black text-xs font-mono bg-neutral-100">
+												<%= badgeText %>
+											</span>
+									</div>
+
+									<% if (typeof soupTags !== 'undefined' && soupTags && soupTags.length > 0) { %>
+										<div class="mt-3 flex flex-wrap gap-1.5">
+											<% soupTags.forEach((tag) => { %>
+												<span class="inline-flex rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 font-mono text-[11px] text-neutral-500"><%= tag.name %></span>
+											<% }) %>
+										</div>
+									<% } %>
+
+									<!-- 黑色分界线 -->
+									<div class="h-1 w-full rounded-full bg-black"></div>
+									<p class="text-base sm:text-lg leading-relaxed font-medium text-neutral-800 whitespace-pre-wrap !mt-4"><%= (soup.surface || '').trim() %></p>
+								</div>
+
+								<div class="soup-card-footer mt-4 pt-4 border-t border-dashed border-neutral-300 flex items-center justify-between text-sm font-mono text-neutral-500">
+									<span>By <%= soup.author_name || 'Unknown' %></span>
+									<span class="flex items-center gap-1 text-black font-bold animate-pulse">
+										Click to Flip
+										<!-- lucide Unlock -->
+										<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+											stroke="currentColor" stroke-width="2" stroke-linecap="round"
+											stroke-linejoin="round">
+											<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+											<path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+										</svg>
+									</span>
+								</div>
+
+							</div>
+
+							<!-- 背面：汤底 -->
+							<div class="soup-face absolute inset-0 backface-hidden rotate-y-180 bg-black text-white p-6 sm:p-8 border-2 border-black
+shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
+								<div class="soup-card-scroll custom-scrollbar">
+									<h3
+										class="text-lg font-mono text-neutral-400 uppercase tracking-widest border-b border-neutral-800 pb-2">
+										The Truth
+									</h3>
+									<p class="text-base sm:text-lg leading-relaxed font-sans text-neutral-200 whitespace-pre-wrap !mt-4"><%= (soup.bottom || '').trim() %></p>
+								</div>
+
+								<div class="soup-card-footer mt-6 flex items-center justify-between gap-4 pt-4 border-t border-neutral-800">
+									<div class="flex items-center gap-2">
+										<button
+											class="font-mono text-white hover:bg-neutral-800 px-3 py-2 rounded js-like-btn <%= hasLiked ? 'opacity-50 cursor-not-allowed' : '' %>"
+											type="button" <%=hasLiked ? 'disabled' : '' %>
+											>
+
+											<!-- lucide Heart -->
+											<svg class="inline-block align-[-2px]" width="16" height="16"
+												viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+												stroke-linecap="round" stroke-linejoin="round">
+												<path
+													d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z">
+												</path>
+											</svg>
+											<span class="ml-2 js-like-count-2">
+												<%= soup.like_count %>
+											</span>
+										</button>
+
+									</div>
+
+									<div class="text-xs font-mono text-neutral-500">
+										Click to hide the truth
+									</div>
+								</div>
+
+							</div>
+
+						</div>
+					</div>
+				</section>
+
+				<section id="rating-summary" class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+					<div class="flex items-center justify-between gap-4">
+						<div class="flex items-center gap-3">
+							<span class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 bg-neutral-50 text-black">
+								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.751a.53.53 0 0 1 .294.904l-3.738 3.644a2.12 2.12 0 0 0-.611 1.878l.882 5.145a.53.53 0 0 1-.77.559l-4.62-2.429a2.12 2.12 0 0 0-1.973 0l-4.62 2.429a.53.53 0 0 1-.77-.56l.882-5.144a2.12 2.12 0 0 0-.611-1.878L2.16 9.79a.53.53 0 0 1 .294-.904l5.165-.751a2.12 2.12 0 0 0 1.597-1.16z" />
+								</svg>
+							</span>
+
+							<div>
+								<div class="font-mono text-xs text-neutral-500">汤的评分情况</div>
+								<div id="ratingSummaryText" class="mt-1 text-lg font-serif font-bold">
+									<% if (Number(soup.rating_count || 0) > 0) { %>
+										<%= Number(soup.rating_avg || 0).toFixed(1) %> 分
+									<% } else { %>
+										暂无评分
+									<% } %>
+								</div>
+							</div>
+						</div>
+
+						<div id="ratingCountText" class="shrink-0 font-mono text-sm text-neutral-500">
+							<%= Number(soup.rating_count || 0) > 0 ? (Number(soup.rating_count || 0) + ' 人打分') : '还没人打分' %>
+						</div>
+					</div>
+				</section>
+
+				<!-- 留言区：翻看汤底后再加载，避免提前剧透。 -->
+				<section id="discussion" class="relative">
+					<div
+						class="js-discussion-locked h-40 border-2 border-dashed border-neutral-300 flex items-center justify-center bg-neutral-50 rounded-lg <%= revealed ? 'hidden' : '' %>">
+						<div class="text-center space-y-2">
+							<div class="font-mono text-neutral-500">翻转卡片查看汤底后，才能查看/发布留言</div>
+						</div>
+					</div>
+
+					<div class="js-discussion hidden space-y-6 <%= revealed ? '' : 'hidden' %>">
+						<div class="flex items-center justify-between border-b-2 border-black pb-4">
+							<h3 class="text-2xl font-serif font-bold">讨论区</h3>
+							<span id="commentCountBadge" class="icon-sketch-btn">
+								<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
+							</span>
+						</div>
+
+						<% if (currentUser) { %>
+							<form id="commentForm" class="space-y-3 js-comment-form" method="post" action="/soups/<%= soup.id %>/comments">
+								<input type="hidden" name="parent_id" id="commentParentId" value="" />
+								<div id="replyHint" class="hidden border-2 border-black bg-neutral-50 px-3 py-2 font-mono text-xs flex items-center justify-between">
+									<span id="replyHintText">正在回复</span>
+									<button type="button" id="cancelReplyBtn" class="underline">取消回复</button>
+								</div>
+								<textarea name="content"
+									class="w-full border-2 border-neutral-300 focus:border-black rounded-none min-h-[100px] resize-none p-3 font-sans"
+									placeholder="请输入留言内容（300字以内）" maxlength="300"></textarea>
+								<div class="flex justify-end">
+									<button
+										type="submit"
+										class="nb-tooltip inline-flex h-10 w-10 items-center justify-center rounded-full bg-black text-white transition hover:scale-105 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-black/20"
+										data-tip="发布留言"
+										data-tip-side="top"
+										aria-label="发布留言"
+									>
+										<svg
+											width="18"
+											height="18"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-hidden="true"
+										>
+											<path d="M22 2 11 13"></path>
+											<path d="M22 2 15 22 11 13 2 9 22 2z"></path>
+										</svg>
+									</button>
+								</div>
+							</form>
+						<% } else { %>
+							<div class="bg-neutral-100 p-4 border border-neutral-200 text-center text-sm font-mono text-neutral-600">
+								请先登录后再留言/回复。
+							</div>
+						<% } %>
+
+						<div id="commentList" class="space-y-4">
+							<% if (revealed) { %>
+								<% if (!comments || comments.length===0) { %>
+									<div class="text-center text-neutral-400 italic font-mono text-xs">暂无留言</div>
+								<% } else { %>
+										<% comments.forEach((c)=> { %>
+											<div class="border border-neutral-200 bg-white p-4 <%= c.parent_id ? 'ml-6 border-l-4' : '' %> <%= c.is_pinned ? 'border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]' : '' %>" data-comment-id="<%= c.id %>">
+												<div class="flex items-center justify-between gap-3 text-xs font-mono text-neutral-500">
+													<span>
+														<% if (c.is_pinned) { %><span class="mr-2 border border-black px-1 text-black">置顶</span><% } %>
+														<%= c.username %>
+														<% if (c.parent_id && c.parent_username) { %>
+															<span class="text-neutral-400"> 回复 @<%= c.parent_username %></span>
+														<% } %>
+													</span>
+													<span><%= c.created_at %></span>
+												</div>
+												<div class="mt-2 whitespace-pre-wrap <%= c.is_deleted ? 'text-neutral-400 italic' : 'text-neutral-800' %>"><%= c.is_deleted ? '（该留言已删除）' : (c.content || '').trim() %></div>
+												<% if (currentUser && !c.is_deleted) { %>
+													<div class="mt-3 flex justify-end gap-3 font-mono text-xs">
+														<button type="button" class="comment-reply-btn underline" data-comment-id="<%= c.id %>" data-username="<%= c.username %>">回复</button>
+														<% if (currentUser.id === c.user_id) { %>
+															<form method="post" action="/soups/<%= soup.id %>/comments/<%= c.id %>/delete" onsubmit="return confirm('确认删除这条留言吗？');">
+																<button type="submit" class="underline">删除</button>
+															</form>
+														<% } %>
+														<% if (currentUser.id === soup.author_id) { %>
+															<form method="post" action="/soups/<%= soup.id %>/comments/<%= c.id %>/pin">
+																<button type="submit" class="underline"><%= c.is_pinned ? '取消置顶' : '置顶' %></button>
+															</form>
+														<% } %>
+													</div>
+												<% } %>
+											</div>
+										<% }) %>
+								<% } %>
+							<% } else { %>
+								<!-- 未解锁：不渲染任何留言内容，防剧透 -->
+							<% } %>
+						</div>
+					</div>
+				</section>
+			</div>
+		</main>
+
+		<script type="application/json" id="soupExportData"><%- JSON.stringify({
+			title: soup.title || '',
+			surface: (soup.surface || '').trim(),
+			bottom: (soup.bottom || '').trim(),
+			hasHostManual: !!(soup.has_host_manual && (soup.host_manual || '').trim()),
+			hostManual: (soup.host_manual || '').trim()
+		}).replace(/</g, '\\u003c') %></script>
+
+		<div id="soupExportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4">
+			<div class="w-full max-w-3xl max-h-[88vh] border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
+				<div class="flex items-center justify-between gap-3 border-b-2 border-black px-5 py-4">
+					<div class="flex items-center gap-2 font-serif font-bold text-xl">
+						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M12 15V3"/>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+							<path d="m7 10 5 5 5-5"/>
+						</svg>
+						导出预览
+					</div>
+					<button type="button" class="js-soup-export-close inline-flex items-center justify-center p-1 hover:opacity-70" aria-label="关闭导出预览">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<circle cx="12" cy="12" r="10"/>
+							<path d="m15 9-6 6"/>
+							<path d="m9 9 6 6"/>
+						</svg>
+					</button>
+				</div>
+				<div class="overflow-y-auto bg-neutral-100 p-4 custom-scrollbar">
+					<img id="soupExportPreviewImg" class="mx-auto w-full max-w-[540px] border-2 border-black bg-white" alt="导出图片预览">
+				</div>
+				<div class="flex items-center justify-end gap-3 border-t-2 border-black px-5 py-4">
+					<button type="button" class="js-soup-export-close btn-sketch">取消</button>
+					<a id="soupExportSaveLink" class="btn-sketch-primary" href="#" download="海龟汤.png">保存 PNG</a>
+				</div>
+			</div>
+		</div>
+
+		<div id="facilitatorModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4">
+			<div class="w-full max-w-2xl h-[82vh] border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
+				<div class="flex items-center justify-between gap-3 border-b-2 border-black px-5 py-4">
+					<div class="flex items-center gap-2">
+						<div class="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-black bg-neutral-100">
+							<svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M12 8V4H8"/>
+								<rect width="16" height="12" x="4" y="8" rx="2"/>
+								<path d="M2 14h2"/>
+								<path d="M20 14h2"/>
+								<path d="M15 13v2"/>
+								<path d="M9 13v2"/>
+							</svg>
+						</div>
+						<div>
+							<div class="font-serif font-bold text-xl leading-none">AI 主持人</div>
+							<div class="mt-1 font-mono text-xs text-neutral-400">功能测试中，如有错误或中断敬请谅解</div>
+						</div>
+					</div>
+
+					<button type="button" class="js-facilitator-close inline-flex items-center justify-center p-1 hover:opacity-70" aria-label="关闭AI主持人">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<circle cx="12" cy="12" r="10"/>
+							<path d="m15 9-6 6"/>
+							<path d="m9 9 6 6"/>
+						</svg>
+					</button>
+				</div>
+
+				<% if (!currentUser) { %>
+					<div class="flex-1 flex items-center justify-center bg-neutral-50 p-6">
+						<div class="max-w-sm border-2 border-black bg-white p-6 text-center shadow-[5px_5px_0px_0px_rgba(0,0,0,1)]">
+							<div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-neutral-100">
+								<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="M12 8V4H8"/>
+									<rect width="16" height="12" x="4" y="8" rx="2"/>
+									<path d="M2 14h2"/>
+									<path d="M20 14h2"/>
+									<path d="M15 13v2"/>
+									<path d="M9 13v2"/>
+								</svg>
+							</div>
+							<div class="font-serif text-xl font-bold">登录后使用 AI 主持人</div>
+							<div class="mt-2 text-sm text-neutral-500">登录后可以向主持人提问，猜测故事真相。</div>
+							<a href="/auth/login?next=<%= encodeURIComponent('/soups/' + soup.id) %>" class="btn-sketch-primary mt-5 inline-flex">去登录</a>
+						</div>
+					</div>
+				<% } else { %>
+					<div id="facilitator-messages" class="flex-1 overflow-y-auto bg-neutral-50 px-4 py-5 custom-scrollbar">
+						<div id="facilitator-empty-hint" class="flex items-start gap-3">
+							<div class="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-black bg-white">
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="M12 8V4H8"/>
+									<rect width="16" height="12" x="4" y="8" rx="2"/>
+									<path d="M2 14h2"/>
+									<path d="M20 14h2"/>
+									<path d="M15 13v2"/>
+									<path d="M9 13v2"/>
+								</svg>
+							</div>
+							<div class="max-w-[78%] rounded-2xl rounded-tl-sm border-2 border-black bg-white px-4 py-3 text-sm leading-relaxed shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+								你好，我是这碗汤的 AI 主持人。你可以像聊天一样向我提问，我只能回答：是、否、部分是、无关。
+							</div>
+						</div>
+					</div>
+
+					<form id="facilitator-form" class="flex items-center gap-2 border-t-2 border-black bg-white p-4" autocomplete="off">
+						<input type="text" id="facilitator-input"
+							class="flex-1 rounded-full border-2 border-black px-4 py-3 font-sans text-sm focus:outline-none"
+							placeholder="向主持人提问…" maxlength="100" required />
+						<button type="submit" id="facilitator-submit" class="send-icon-btn nb-tooltip disabled:opacity-50" data-tip="发送" data-tip-side="top" aria-label="发送">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M22 2 11 13"></path>
+								<path d="M22 2 15 22 11 13 2 9 22 2z"></path>
+							</svg>
+						</button>
+					</form>
+				<% } %>
+			</div>
+		</div>
+
+
+		<div id="ratingModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4">
+			<div class="w-full max-w-md rounded-2xl border border-neutral-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.22)]">
+				<div class="flex items-center justify-between gap-3 border-b border-neutral-100 px-5 py-4">
+					<div>
+						<div class="font-serif text-xl font-bold">给这碗汤打分</div>
+						<div class="mt-1 font-mono text-xs text-neutral-500">1 颗星 = 2 分，最高 10 分</div>
+					</div>
+
+					<button type="button" class="js-rating-close nb-tooltip inline-flex items-center justify-center p-1 hover:opacity-70" data-tip="关闭" aria-label="关闭打分弹窗">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<circle cx="12" cy="12" r="10"/>
+							<path d="m15 9-6 6"/>
+							<path d="m9 9 6 6"/>
+						</svg>
+					</button>
+				</div>
+
+				<div class="px-5 py-5">
+					<div class="js-rating-hint mb-4 hidden rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-600">
+						你已经给这个汤打过分了哦，再次打分会覆盖上一次打分情况~
+					</div>
+
+					<div class="flex items-center justify-center gap-2" id="ratingStars" data-current-score="<%= currentUserRating || '' %>">
+						<% [2, 4, 6, 8, 10].forEach((score, index) => { %>
+							<button type="button" class="js-rating-star text-neutral-300 transition hover:scale-110" data-score="<%= score %>" aria-label="<%= score %> 分">
+								<svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.751a.53.53 0 0 1 .294.904l-3.738 3.644a2.12 2.12 0 0 0-.611 1.878l.882 5.145a.53.53 0 0 1-.77.559l-4.62-2.429a2.12 2.12 0 0 0-1.973 0l-4.62 2.429a.53.53 0 0 1-.77-.56l.882-5.144a2.12 2.12 0 0 0-.611-1.878L2.16 9.79a.53.53 0 0 1 .294-.904l5.165-.751a2.12 2.12 0 0 0 1.597-1.16z" />
+								</svg>
+							</button>
+						<% }) %>
+					</div>
+
+					<div id="ratingSelectedText" class="mt-3 text-center font-mono text-sm text-neutral-500">
+						请选择评分
+					</div>
+
+					<div class="mt-5 flex items-center justify-end gap-2">
+						<button type="button" class="js-rating-close btn-sketch">取消</button>
+						<button type="button" id="ratingSubmitBtn" class="btn-sketch-primary disabled:opacity-50" disabled>确认打分</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<% if (soup.has_host_manual && (soup.host_manual || '').trim()) { %>
+			<div id="hostManualModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 px-4">
+				<div class="w-full max-w-2xl max-h-[80vh] border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
+					<div class="flex items-center justify-between gap-3 border-b-2 border-black px-5 py-4">
+						<div class="flex items-center gap-2 font-serif font-bold text-xl">
+							<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M12 7v14"/><path d="M16 12h2"/><path d="M16 8h2"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><path d="M6 12h2"/><path d="M6 8h2"/>
+							</svg>
+							主持人手册
+						</div>
+						<button type="button" class="js-host-manual-close inline-flex items-center justify-center p-1 hover:opacity-70" aria-label="关闭主持人手册">
+							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<circle cx="12" cy="12" r="10"/>
+								<path d="m15 9-6 6"/>
+								<path d="m9 9 6 6"/>
+							</svg>
+						</button>
+					</div>
+					<div class="overflow-y-auto p-5 custom-scrollbar">
+						<div class="whitespace-pre-wrap leading-relaxed text-neutral-800"><%= (soup.host_manual || '').trim() %></div>
+					</div>
+				</div>
+			</div>
+		<% } %>
+		<div id="nb-toast"
+			class="fixed left-1/2 bottom-6 -translate-x-1/2 bg-black text-white px-3 py-2 rounded opacity-0 transition-opacity">
+		</div>
+
+	<script src="/js/soup-export.js" defer></script>
+
+	<script>
+	(function () {
+		const facilitatorModal = document.getElementById('facilitatorModal');
+		const openBtns = document.querySelectorAll('.js-facilitator-open');
+		const closeBtns = document.querySelectorAll('.js-facilitator-close');
+
+		function openFacilitatorModal() {
+			if (!facilitatorModal) return;
+			facilitatorModal.classList.remove('hidden');
+			facilitatorModal.classList.add('flex');
+			document.body.classList.add('overflow-hidden');
+
+			const inputEl = document.getElementById('facilitator-input');
+			if (inputEl) {
+				setTimeout(() => inputEl.focus(), 50);
+			}
+		}
+
+		function closeFacilitatorModal() {
+			if (!facilitatorModal) return;
+			facilitatorModal.classList.add('hidden');
+			facilitatorModal.classList.remove('flex');
+			document.body.classList.remove('overflow-hidden');
+		}
+
+		openBtns.forEach((btn) => {
+			btn.addEventListener('click', openFacilitatorModal);
+		});
+
+		closeBtns.forEach((btn) => {
+			btn.addEventListener('click', closeFacilitatorModal);
+		});
+
+		if (facilitatorModal) {
+			facilitatorModal.addEventListener('click', (event) => {
+				if (event.target === facilitatorModal) {
+					closeFacilitatorModal();
+				}
+			});
+		}
+
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape' && facilitatorModal && !facilitatorModal.classList.contains('hidden')) {
+				closeFacilitatorModal();
+			}
+		});
+	})();
+	</script>
+
+	<% if (currentUser) { %>
+	<script>
+	(function () {
+		const soupId = <%= soup.id %>;
+		const formEl = document.getElementById('facilitator-form');
+		const inputEl = document.getElementById('facilitator-input');
+		const messagesEl = document.getElementById('facilitator-messages');
+		const submitBtn = document.getElementById('facilitator-submit');
+		if (!formEl || !inputEl || !messagesEl || !submitBtn) return;
+
+		let history = [];
+
+		function esc(str) {
+			return String(str || '')
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;');
+		}
+
+		function botIconSvg() {
+			return `
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M12 8V4H8"/>
+					<rect width="16" height="12" x="4" y="8" rx="2"/>
+					<path d="M2 14h2"/>
+					<path d="M20 14h2"/>
+					<path d="M15 13v2"/>
+					<path d="M9 13v2"/>
+				</svg>
+			`;
+		}
+
+		function answerClass(text) {
+			if (/^是/.test(text) && !/部分/.test(text)) return 'border-green-500 bg-green-50 text-green-900';
+			if (/^否/.test(text)) return 'border-red-500 bg-red-50 text-red-900';
+			if (/部分/.test(text)) return 'border-amber-500 bg-amber-50 text-amber-900';
+			return 'border-neutral-300 bg-white text-neutral-700';
+		}
+
+		function scrollToBottom() {
+			messagesEl.scrollTop = messagesEl.scrollHeight;
+		}
+
+		function appendMessage(role, content) {
+			const hint = document.getElementById('facilitator-empty-hint');
+			if (hint) hint.remove();
+
+			const wrap = document.createElement('div');
+
+			if (role === 'user') {
+				wrap.className = 'mb-4 flex justify-end';
+				wrap.innerHTML = `
+					<div class="max-w-[78%] rounded-2xl rounded-tr-sm bg-black px-4 py-3 text-sm leading-relaxed text-white break-words shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)]">
+						${esc(content)}
+					</div>
+				`;
+			} else {
+				const cls = answerClass(content);
+				wrap.className = 'mb-4 flex items-start gap-3 justify-start';
+				wrap.innerHTML = `
+					<div class="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-black bg-white">
+						${botIconSvg()}
+					</div>
+					<div class="max-w-[78%] rounded-2xl rounded-tl-sm border-2 px-4 py-3 text-sm leading-relaxed break-words shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${cls}">
+						${esc(content)}
+					</div>
+				`;
+			}
+
+			messagesEl.appendChild(wrap);
+			scrollToBottom();
+			return wrap;
+		}
+
+		function appendLoading() {
+			const hint = document.getElementById('facilitator-empty-hint');
+			if (hint) hint.remove();
+
+			const wrap = document.createElement('div');
+			wrap.className = 'mb-4 flex items-start gap-3 justify-start js-facilitator-loading';
+			wrap.innerHTML = `
+				<div class="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-black bg-white">
+					${botIconSvg()}
+				</div>
+				<div class="rounded-2xl rounded-tl-sm border-2 border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-400 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+					<span class="animate-pulse">正在思考…</span>
+				</div>
+			`;
+			messagesEl.appendChild(wrap);
+			scrollToBottom();
+			return wrap;
+		}
+
+		formEl.addEventListener('submit', async function (e) {
+			e.preventDefault();
+
+			const question = inputEl.value.trim();
+			if (!question) return;
+
+			inputEl.value = '';
+			submitBtn.disabled = true;
+
+			appendMessage('user', question);
+			const loadingEl = appendLoading();
+
+			try {
+				const resp = await fetch(`/soups/${soupId}/ask`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ question, history }),
+				});
+
+				loadingEl.remove();
+
+				if (!resp.ok) {
+					const err = await resp.json().catch(() => ({}));
+					appendMessage('assistant', err.message || '请求失败');
+					return;
+				}
+
+				const data = await resp.json();
+
+				history.push({ role: 'user', content: question });
+				history.push({ role: 'assistant', content: data.answer });
+
+				appendMessage('assistant', data.answer);
+			} catch (_) {
+				loadingEl.remove();
+				appendMessage('assistant', '网络错误，请重试');
+			} finally {
+				submitBtn.disabled = false;
+				inputEl.focus();
+			}
+		});
+	})();
+	</script>
+	<% } %>
+</body>
+
+</html>

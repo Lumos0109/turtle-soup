@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+	<%- include('partials/head') %>
+</head>
+
+<body>
+	<%- include('partials/navbar') %>
+
+	<main class="max-w-6xl mx-auto px-4 py-5" data-room-code="<%= room.code %>">
+		<header class="mb-4 rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+			<div class="flex items-center justify-between gap-3">
+				<div class="flex min-w-0 items-center gap-3">
+					<button id="backToRoomsBtn" class="room-icon-btn room-tooltip" data-tip="返回大厅" type="button" aria-label="返回大厅">
+						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+					</button>
+					<h1 class="truncate text-xl sm:text-2xl font-serif font-bold">房间 #<%= room.code %></h1>
+				</div>
+
+				<div class="flex shrink-0 items-center gap-2">
+					<button id="openSeatsBtn" class="room-icon-btn room-tooltip" data-tip="座位" type="button" aria-label="座位">
+						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>
+					</button>
+					<button id="copyRoomLinkBtn" class="room-icon-btn room-tooltip" data-tip="复制房间链接" type="button" aria-label="复制房间链接">
+						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>
+					</button>
+				</div>
+			</div>
+		</header>
+
+		<% if (message) { %>
+			<div class="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 font-mono text-xs text-neutral-600">
+				<span class="font-bold text-black">提示：</span><%= message %>
+			</div>
+		<% } %>
+
+		<div id="roomToast" class="fixed left-1/2 bottom-6 z-[90] -translate-x-1/2 rounded bg-black px-3 py-2 text-sm text-white opacity-0 transition-opacity"></div>
+
+		<div class="space-y-4">
+			<section class="rounded-2xl border-2 border-black bg-white p-4 sm:p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+				<div class="flex items-start justify-between gap-3">
+					<div class="min-w-0">
+						<div class="font-mono text-xs text-neutral-500">当前汤</div>
+						<h2 id="roomSoupTitle" class="mt-1 truncate text-2xl font-serif font-bold">待主持人选汤ing</h2>
+						<div id="roomSoupTags" class="mt-2 hidden flex flex-wrap gap-1.5"></div>
+					</div>
+					<div class="flex shrink-0 items-center gap-2">
+						<button id="toggleSoupSurfaceBtn" class="room-icon-btn room-tooltip" data-tip="展开汤面" type="button" aria-label="展开汤面" aria-expanded="false">
+							<span id="expandIcon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+							<span id="collapseIcon" class="hidden"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></span>
+						</button>
+						<div class="relative">
+							<button id="featureMenuBtn" class="room-icon-btn room-tooltip" data-tip="功能" type="button" aria-label="功能">
+								<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+							</button>
+							<div id="featureMenu" class="hidden absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2 shadow-[0_18px_45px_rgba(0,0,0,0.18)]">
+								<button id="openSoupPickerBtn" type="button" class="room-menu-item host-only">选择海龟汤</button>
+								<button id="openHintModalBtn" type="button" class="room-menu-item host-only">主持人提示</button>
+								<button id="openBottomModalBtn" type="button" class="room-menu-item host-only">查看汤底</button>
+								<button id="openManualModalBtn" type="button" class="room-menu-item host-only">查看主持人手册</button>
+								<button id="finishSoupBtn" type="button" class="room-menu-item host-only">完结撒花</button>
+								<button id="resetRoomBtn" type="button" class="room-menu-item host-only text-red-600">结束</button>
+								<div id="featureMenuEmpty" class="px-3 py-2 font-mono text-xs text-neutral-400">暂无可用功能</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="soupWaiting" class="mt-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center font-mono text-neutral-400">
+					待主持人选汤ing
+				</div>
+
+				<div id="soupPlaying" class="hidden mt-4 space-y-4">
+					<div id="soupSurfaceWrap" class="hidden rounded-xl border border-neutral-100 bg-neutral-50/70 p-4">
+						<div class="mb-2 font-mono text-xs text-neutral-500">汤面</div>
+						<div id="roomSoupSurface" class="h-52 overflow-y-auto whitespace-pre-wrap pr-2 leading-relaxed text-neutral-800 custom-scrollbar"></div>
+					</div>
+
+					<div id="finishedPanel" class="hidden rounded-xl border border-black bg-neutral-950 p-4 text-white">
+						<div class="mb-2 font-serif text-xl font-bold">汤底公开</div>
+						<div id="finishedBottom" class="max-h-52 overflow-y-auto whitespace-pre-wrap pr-2 leading-relaxed text-neutral-100 custom-scrollbar"></div>
+						<div class="mt-4 flex flex-wrap items-center gap-2">
+							<button id="roomRateBtn" class="rounded-full bg-white px-4 py-2 font-mono text-xs text-black" type="button">打分</button>
+							<button id="roomLikeBtn" class="rounded-full bg-white px-4 py-2 font-mono text-xs text-black" type="button">点赞</button>
+							<button id="roomCommentBtn" class="rounded-full bg-white px-4 py-2 font-mono text-xs text-black" type="button">留言</button>
+							<a id="roomSoupDetailLink" class="rounded-full border border-white px-4 py-2 font-mono text-xs text-white" target="_blank" rel="noopener">打开详情页</a>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+				<div class="mb-3 flex items-center justify-between gap-3">
+					<h3 class="font-serif text-xl font-bold">讨论区</h3>
+					<div class="flex items-center gap-2">
+						<button id="openQuestionModalBtn" class="room-icon-btn room-tooltip" data-tip="提问" type="button" aria-label="提问">
+							<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+						</button>
+						<button id="openHistoryModalBtn" class="room-icon-btn room-tooltip" data-tip="历史" type="button" aria-label="历史">
+							<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg>
+						</button>
+					</div>
+				</div>
+				<div id="chatList" class="h-[58vh] min-h-[420px] space-y-3 overflow-y-auto rounded-xl border border-neutral-100 bg-neutral-50 p-3 pr-1 custom-scrollbar"></div>
+				<form id="chatForm" class="mt-3 flex gap-2">
+					<button id="openStickerModalBtn" class="room-icon-btn room-tooltip shrink-0" data-tip="发表情" type="button" aria-label="发表情">
+						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
+					</button>
+					<input id="chatInput" class="min-w-0 flex-1 rounded-full border border-neutral-300 px-4 py-2 text-sm outline-none focus:border-black" maxlength="300" placeholder="聊天或讨论一下…" />
+					<button class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white" type="submit" aria-label="发送">
+						<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/></svg>
+					</button>
+				</form>
+			</section>
+		</div>
+	</main>
+
+	<div id="stickerModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="flex max-h-[78vh] w-full max-w-xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+				<div>
+					<div class="font-serif text-xl font-bold">发表情</div>
+					<div class="mt-1 font-mono text-xs text-neutral-500">点击表情即可发送到讨论区</div>
+				</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="stickerModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<div id="stickerList" class="min-h-[180px] overflow-y-auto p-5 custom-scrollbar">
+				<div class="py-10 text-center font-mono text-xs text-neutral-400">暂无表情</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="seatsModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="mb-4 flex items-center justify-between gap-3">
+				<div>
+					<div class="font-serif text-xl font-bold">座位</div>
+					<div id="memberCount" class="mt-1 font-mono text-xs text-neutral-500">0 / <%= config.maxMembers %></div>
+				</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="seatsModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<div id="hostSeat" class="mb-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-sm">主持人位：空</div>
+			<div id="memberList" class="max-h-[50vh] space-y-2 overflow-y-auto custom-scrollbar"></div>
+		</div>
+	</div>
+
+	<div id="questionModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="mb-4 flex items-center justify-between gap-3">
+				<div class="font-serif text-xl font-bold">向主持人提问</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="questionModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<form id="questionForm" class="space-y-3">
+				<input id="questionInput" class="w-full rounded-full border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-black" maxlength="200" placeholder="输入问题，等待主持人回答" />
+				<div class="flex justify-end"><button class="btn-sketch-primary" type="submit">提问</button></div>
+			</form>
+		</div>
+	</div>
+
+	<div id="historyModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+				<div class="font-serif text-xl font-bold">提问 / 提示历史</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="historyModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<div class="border-b border-neutral-100 px-5 py-3">
+				<div class="flex flex-wrap gap-2 font-mono text-xs">
+					<button class="room-filter-chip is-active" data-history-filter="all" type="button">全部</button>
+					<button class="room-filter-chip" data-history-filter="pending" type="button">待回答</button>
+					<button class="room-filter-chip" data-history-filter="yes" type="button">是</button>
+					<button class="room-filter-chip" data-history-filter="no" type="button">否</button>
+					<button class="room-filter-chip" data-history-filter="partial" type="button">是也不是</button>
+					<button class="room-filter-chip" data-history-filter="irrelevant" type="button">无关</button>
+					<button class="room-filter-chip" data-history-filter="hint" type="button">提示</button>
+				</div>
+			</div>
+			<div id="historyList" class="min-h-0 flex-1 space-y-3 overflow-y-auto p-5 custom-scrollbar"></div>
+		</div>
+	</div>
+
+	<div id="hintModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="mb-4 flex items-center justify-between gap-3">
+				<div>
+					<div class="font-serif text-xl font-bold">主持人提示</div>
+					<div class="mt-1 font-mono text-xs text-neutral-500">最多 <%= config.maxHintImages %> 张图</div>
+				</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="hintModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<form id="hintForm" class="space-y-3" enctype="multipart/form-data">
+				<textarea id="hintInput" name="content" class="h-28 w-full rounded-xl border border-neutral-300 p-3 text-sm outline-none focus:border-black" maxlength="300" placeholder="给玩家一点提示，可配图"></textarea>
+				<input id="hintImages" name="images" type="file" accept="image/*" multiple class="block w-full text-xs" />
+				<div class="flex justify-end"><button class="btn-sketch-primary" type="submit">发送提示</button></div>
+			</form>
+		</div>
+	</div>
+
+	<div id="bottomModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="w-full max-w-xl rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="mb-4 flex items-center justify-between gap-3">
+				<div class="font-serif text-xl font-bold">汤底</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="bottomModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<div id="roomSoupBottom" class="max-h-[62vh] overflow-y-auto whitespace-pre-wrap leading-relaxed text-neutral-800 custom-scrollbar"></div>
+		</div>
+	</div>
+
+	<div id="manualModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="w-full max-w-xl rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="mb-4 flex items-center justify-between gap-3">
+				<div class="font-serif text-xl font-bold">主持人手册</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="manualModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<div id="roomHostManual" class="max-h-[62vh] overflow-y-auto whitespace-pre-wrap leading-relaxed text-neutral-800 custom-scrollbar">暂无主持人手册</div>
+		</div>
+	</div>
+
+	<div id="soupPickerModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
+		<div class="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+				<div>
+					<div class="font-serif text-xl font-bold">选择要玩的海龟汤</div>
+					<div class="mt-1 font-mono text-xs text-neutral-500">可模糊搜索、标签筛选、热度/评分排序</div>
+				</div>
+				<button id="closeSoupPickerBtn" class="p-1 text-2xl leading-none" type="button" aria-label="关闭">×</button>
+			</div>
+			<div class="space-y-3 p-5">
+				<div class="flex flex-col gap-2 sm:flex-row">
+					<input id="pickerQ" class="min-w-0 flex-1 rounded-full border-2 border-black px-4 py-2 outline-none" placeholder="搜索海龟汤…" />
+					<select id="pickerSort" class="rounded-full border border-neutral-300 px-3 py-2 font-mono text-xs">
+						<option value="">默认</option>
+						<option value="hot_desc">热度↓</option>
+						<option value="hot_asc">热度↑</option>
+						<option value="rating_desc">评分↓</option>
+						<option value="rating_asc">评分↑</option>
+					</select>
+					<button id="pickerSearchBtn" class="btn-sketch-primary" type="button">搜索</button>
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<% tags.forEach((t) => { %>
+						<label class="inline-flex cursor-pointer items-center gap-1 rounded-full border border-neutral-200 px-3 py-1.5 font-mono text-xs hover:border-black">
+							<input type="checkbox" class="pickerTag" value="<%= t.id %>" />
+							<span><%= t.name %></span>
+						</label>
+					<% }) %>
+				</div>
+			</div>
+			<div id="pickerResults" class="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-5 custom-scrollbar"></div>
+		</div>
+	</div>
+
+	<div id="roomRatingModal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 px-4">
+		<div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="flex items-start justify-between gap-3">
+				<div>
+					<div class="font-serif text-xl font-bold">给这碗汤打分</div>
+					<div class="mt-1 font-mono text-xs text-neutral-500">1 颗星 = 2 分，最高 10 分</div>
+				</div>
+				<button id="closeRoomRatingBtn" type="button" class="p-1 text-2xl leading-none">×</button>
+			</div>
+			<div id="roomRatingStars" class="mt-5 flex justify-center gap-2">
+				<% [2,4,6,8,10].forEach((score) => { %>
+					<button type="button" class="room-rating-star text-neutral-300" data-score="<%= score %>" aria-label="<%= score %> 分">
+						<svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.751a.53.53 0 0 1 .294.904l-3.738 3.644a2.12 2.12 0 0 0-.611 1.878l.882 5.145a.53.53 0 0 1-.77.559l-4.62-2.429a2.12 2.12 0 0 0-1.973 0l-4.62 2.429a.53.53 0 0 1-.77-.56l.882-5.144a2.12 2.12 0 0 0-.611-1.878L2.16 9.79a.53.53 0 0 1 .294-.904l5.165-.751a2.12 2.12 0 0 0 1.597-1.16z" /></svg>
+					</button>
+				<% }) %>
+			</div>
+			<div id="roomRatingText" class="mt-3 text-center font-mono text-sm text-neutral-500">请选择评分</div>
+			<div class="mt-5 flex justify-end gap-2"><button id="submitRoomRatingBtn" class="btn-sketch-primary" type="button" disabled>确认打分</button></div>
+		</div>
+	</div>
+
+	<style>
+		.room-icon-btn { position: relative; display: inline-flex; height: 2.5rem; width: 2.5rem; align-items: center; justify-content: center; border: 1px solid rgb(212 212 212); border-radius: 9999px; background: white; color: rgb(23 23 23); transition: all 150ms ease; }
+		.room-icon-btn:hover { border-color: black; background: black; color: white; }
+		.room-tooltip::after, .room-tooltip::before { pointer-events: none; position: absolute; left: 50%; z-index: 90; opacity: 0; transition: opacity 150ms ease, transform 150ms ease; }
+		.room-tooltip::after { content: attr(data-tip); top: 100%; margin-top: .5rem; transform: translateX(-50%) translateY(-4px); white-space: nowrap; border-radius: .375rem; background: #000; padding: .375rem .625rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: .75rem; line-height: 1; color: #fff; box-shadow: 0 10px 24px rgba(0,0,0,.18); }
+		.room-tooltip::before { content: ""; top: 100%; margin-top: .25rem; width: .5rem; height: .5rem; transform: translateX(-50%) translateY(-4px) rotate(45deg); background: #000; }
+		.room-tooltip:hover::after, .room-tooltip:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+		.room-tooltip:hover::before, .room-tooltip:focus-visible::before { opacity: 1; transform: translateX(-50%) translateY(0) rotate(45deg); }
+		.room-menu-item { display: block; width: 100%; border-radius: .75rem; padding: .55rem .75rem; text-align: left; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: .75rem; color: rgb(38 38 38); }
+		.room-menu-item:hover { background: rgb(245 245 245); }
+		.room-filter-chip { border: 1px solid rgb(212 212 212); border-radius: 9999px; padding: 0.35rem 0.7rem; background: white; color: rgb(23 23 23); transition: all 150ms ease; }
+		.room-filter-chip:hover { border-color: black; }
+		.room-filter-chip.is-active { border-color: black; background: black; color: white; }
+		.room-answer-yes { color: rgb(22 101 52); background: rgb(240 253 244); border-color: rgb(134 239 172); }
+		.room-answer-no { color: rgb(153 27 27); background: rgb(254 242 242); border-color: rgb(252 165 165); }
+		.room-answer-partial { color: rgb(133 77 14); background: rgb(254 252 232); border-color: rgb(253 224 71); }
+		.room-answer-irrelevant { color: rgb(82 82 82); background: rgb(245 245 245); border-color: rgb(212 212 212); }
+		.room-answer-pending { color: rgb(146 64 14); background: rgb(255 251 235); border-color: rgb(252 211 77); }
+		.room-answer-hint { color: rgb(88 28 135); background: rgb(250 245 255); border-color: rgb(216 180 254); }
+		.room-history-icon { display: inline-flex; height: 1.75rem; min-width: 1.75rem; align-items: center; justify-content: center; border-radius: 9999px; background: rgba(255,255,255,.75); }
+		.room-tag-chip { display: inline-flex; align-items: center; border: 1px solid rgb(229 229 229); border-radius: 9999px; background: rgb(250 250 250); padding: .2rem .5rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: .68rem; color: rgb(82 82 82); }
+		.room-sticker-img { width: 5.5rem; height: 5.5rem; object-fit: contain; }
+		@media (min-width: 640px) { .room-sticker-img { width: 6.5rem; height: 6.5rem; } }
+		.room-sticker-choice { display: inline-flex; align-items: center; justify-content: center; width: 5.75rem; height: 5.75rem; border: 1px solid rgb(229 229 229); border-radius: 1rem; background: rgb(250 250 250); transition: all 150ms ease; }
+		.room-sticker-choice:hover { border-color: black; background: white; transform: translateY(-1px); }
+	</style>
+
+	<script defer src="/js/room.js"></script>
+</body>
+
+</html>

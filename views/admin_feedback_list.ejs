@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+	<%- include('partials/head', { title }) %>
+</head>
+
+<body>
+	<%- include('partials/navbar') %>
+
+		<main class="max-w-5xl mx-auto px-4 py-10">
+			<div class="flex items-start justify-between gap-6 mb-8">
+				<div>
+					<h1 class="font-serif font-bold text-3xl">反馈列表</h1>
+					<p class="mt-2 font-mono text-xs text-neutral-500">按最新更新时间由新到旧</p>
+				</div>
+				<a href="/admin" class="btn-sketch">返回后台</a>
+			</div>
+
+			<% if (msg) { %>
+				<div
+					class="mb-6 border-2 border-black bg-neutral-50 p-3 font-mono text-xs shadow-[6px_6px_0px_0px_rgba(0,0,0,0.12)]">
+					<span class="font-bold">提示：</span>
+					<%= msg %>
+				</div>
+				<% } %>
+
+					<div class="flex flex-wrap items-center gap-2 mb-6">
+						<a href="/admin/feedback"
+							class="btn-sketch <%= !activeStatus ? 'bg-black text-white' : '' %>">全部</a>
+						<a href="/admin/feedback?status=pending"
+							class="btn-sketch <%= activeStatus==='pending' ? 'bg-black text-white' : '' %>">待处理</a>
+						<a href="/admin/feedback?status=processed"
+							class="btn-sketch <%= activeStatus==='processed' ? 'bg-black text-white' : '' %>">已处理</a>
+						<a href="/admin/feedback?status=closed"
+							class="btn-sketch <%= activeStatus==='closed' ? 'bg-black text-white' : '' %>">已关闭</a>
+					</div>
+
+					<div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+						<% if (!threads || threads.length===0) { %>
+							<div class="text-center text-neutral-400 italic font-mono text-xs py-10">暂无反馈</div>
+							<% } else { %>
+								<div class="space-y-3">
+									<% threads.forEach((t)=> { %>
+										<a href="/admin/feedback/<%= t.id %>"
+											class="block border border-neutral-200 p-4 hover:border-black transition">
+											<div class="flex items-center justify-between gap-3">
+												<div class="font-serif font-bold">
+													<%= t.subject %>
+												</div>
+												<div class="font-mono text-xs border-2 border-black px-2 py-1">
+													<%= t.status_text %>
+												</div>
+											</div>
+											<div class="mt-2 font-mono text-xs text-neutral-500">
+												来自：<%= t.from_name %> · 更新时间：<%= t.updated_at %> · #<%= t.id %>
+											</div>
+										</a>
+										<% }) %>
+								</div>
+								<% } %>
+					</div>
+		</main>
+</body>
+
+</html>

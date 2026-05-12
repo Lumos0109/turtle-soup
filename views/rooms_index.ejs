@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+	<%- include('partials/head') %>
+</head>
+
+<body>
+	<%- include('partials/navbar') %>
+
+	<main class="max-w-5xl mx-auto px-4 py-8">
+		<% if (message) { %>
+			<div class="mb-5 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 font-mono text-xs text-neutral-600">
+				<span class="font-bold text-black">提示：</span><%= message %>
+			</div>
+		<% } %>
+
+		<% if (currentRoom) { %>
+			<section class="mb-5 rounded-2xl border border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.12)]">
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<div class="font-mono text-xs text-neutral-500">你当前正在一个房间里</div>
+						<div class="mt-1 font-serif text-xl font-bold">房间 #<%= currentRoom.code %></div>
+						<div class="mt-1 text-sm text-neutral-500">一个账号同一时间只能待在一个房间。想创建或进入其他房间，请先回到当前房间并离开。</div>
+					</div>
+					<a href="/rooms/<%= currentRoom.code %>" class="btn-sketch-primary shrink-0">回到当前房间</a>
+				</div>
+			</section>
+		<% } %>
+
+		<section class="mb-8 rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<div class="font-mono text-xs text-neutral-500">ROOMS</div>
+					<h1 class="mt-1 text-3xl font-serif font-bold tracking-tight">海龟汤房间</h1>
+					<p class="mt-2 text-sm text-neutral-500">
+						可以先看看已有房间，也可以创建一个新房间开汤。
+					</p>
+				</div>
+
+				<form method="post" action="/rooms">
+					<button
+						type="submit"
+						class="inline-flex items-center gap-2 rounded-full border-2 border-black bg-black px-5 py-3 font-mono text-sm text-white transition hover:-translate-y-0.5 hover:bg-white hover:text-black"
+						<%= (activeCount >= maxRooms || currentRoom) ? 'disabled' : '' %>
+					>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+							<path d="M3 10.5 12 3l9 7.5" />
+							<path d="M5 10v11h14V10" />
+						</svg>
+						<span>创建房间</span>
+					</button>
+				</form>
+			</div>
+
+			<div class="mt-4 font-mono text-xs text-neutral-500">
+				当前房间：<%= activeCount %> / <%= maxRooms %>
+				<% if (activeCount >= maxRooms) { %>
+					<span class="ml-2 text-black">房间已达上限，等空位后再创建喔。</span>
+				<% } %>
+			</div>
+		</section>
+
+		<% if (!rooms || rooms.length === 0) { %>
+			<section class="rounded-2xl border-2 border-dashed border-neutral-300 bg-neutral-50 p-10 text-center">
+				<div class="font-mono text-neutral-500">现在还没有开放中的房间。</div>
+				<form class="mt-5" method="post" action="/rooms">
+					<button type="submit" class="btn-sketch-primary" <%= currentRoom ? 'disabled' : '' %>>创建第一个房间</button>
+				</form>
+			</section>
+		<% } else { %>
+			<section class="grid gap-4">
+				<% rooms.forEach((room) => { %>
+					<article class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
+						<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+							<div class="min-w-0">
+								<div class="flex flex-wrap items-center gap-2">
+									<h2 class="font-serif text-2xl font-bold">房间 #<%= room.code %></h2>
+									<span class="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 font-mono text-xs text-neutral-600">
+										<%= room.statusText %>
+									</span>
+									<span class="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 font-mono text-xs text-neutral-600">
+										在线 <%= room.online_count || 0 %> 人
+									</span>
+								</div>
+
+								<div class="mt-3 grid gap-1 text-sm text-neutral-600 sm:grid-cols-2">
+									<div>
+										<span class="font-mono text-xs text-neutral-400">主持人：</span>
+										<% if (room.host_name) { %>
+											<span class="font-medium text-neutral-800"><%= room.host_name %></span>
+										<% } else { %>
+											<span class="text-neutral-400">暂无主持人</span>
+										<% } %>
+									</div>
+
+									<div>
+										<span class="font-mono text-xs text-neutral-400">当前汤：</span>
+										<% if (room.status === 'playing' && room.soup_title) { %>
+											<span class="font-medium text-neutral-800">《<%= room.soup_title %>》</span>
+										<% } else if (room.status === 'finished' && room.soup_title) { %>
+											<span class="font-medium text-neutral-800">《<%= room.soup_title %>》（已完结）</span>
+										<% } else { %>
+											<span class="text-neutral-400">待主持人选汤ing</span>
+										<% } %>
+									</div>
+								</div>
+
+								<div class="mt-3 font-mono text-xs text-neutral-400">
+									最后活动：<%= room.last_activity_at || room.updated_at || room.created_at %>
+								</div>
+							</div>
+
+							<a
+								href="/rooms/<%= room.code %>"
+								class="inline-flex shrink-0 items-center justify-center rounded-full border-2 border-black bg-white px-5 py-2.5 font-mono text-sm transition hover:bg-black hover:text-white"
+							>
+								进入房间
+							</a>
+						</div>
+					</article>
+				<% }) %>
+			</section>
+		<% } %>
+	</main>
+</body>
+
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <%- include('partials/head', { title }) %>
+</head>
+
+<body>
+    <%- include('partials/navbar') %>
+
+        <main class="max-w-5xl mx-auto px-4 py-10">
+            <div class="flex items-center justify-center min-h-[60vh]">
+                <div
+                    class="w-full max-w-md p-8 border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-none">
+                    <div class="text-center mb-6">
+                        <div class="text-2xl font-serif font-bold">登录</div>
+                        <div class="mt-2 font-mono text-xs text-neutral-500">使用你的账号进入海龟汤世界</div>
+                    </div>
+
+                    <% if (error) { %>
+                        <div class="mb-4 border-2 border-black bg-neutral-50 p-3 font-mono text-xs">
+                            <span class="font-bold">提示：</span>
+                            <%= error %>
+                        </div>
+                        <% } %>
+
+                            <form method="post" action="/auth/login" class="space-y-4">
+                                <input type="hidden" name="next" value="<%= next || '/' %>" />
+
+                                <div>
+                                    <div class="font-mono text-xs mb-2 text-neutral-600">用户名</div>
+                                    <input name="username" value="<%= (form && form.username) ? form.username : '' %>"
+                                        class="w-full h-12 border-2 border-black rounded-none px-3 outline-none"
+                                        placeholder="请输入用户名" autocomplete="username" />
+                                </div>
+
+                                <div>
+                                    <div class="font-mono text-xs mb-2 text-neutral-600">密码</div>
+                                    <input type="password" name="password"
+                                        class="w-full h-12 border-2 border-black rounded-none px-3 outline-none"
+                                        placeholder="请输入密码" autocomplete="current-password" />
+                                </div>
+
+                                <button type="submit" class="w-full btn-sketch-primary h-12">LOGIN</button>
+
+                                <div class="text-center font-mono text-xs text-neutral-500">
+                                    没有账号？
+                                    <a class="underline hover:text-black" href="/auth/register">去注册</a>
+                                </div>
+                            </form>
+                </div>
+            </div>
+        </main>
+</body>
+
+</html>

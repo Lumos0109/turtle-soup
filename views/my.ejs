@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+	<%- include('partials/head', { title }) %>
+</head>
+
+<body>
+	<%- include('partials/navbar') %>
+
+	<main class="max-w-5xl mx-auto px-4 py-10">
+		<div class="flex items-start justify-between gap-6 mb-8">
+			<div>
+				<h1 class="font-serif font-bold text-3xl">我的汤库</h1>
+				<p class="mt-2 font-mono text-xs text-neutral-500">查看、编辑或删除你上传的待审核、已驳回、私密和草稿海龟汤</p>
+			</div>
+			<a href="/soups/create" class="btn-sketch-primary">新建海龟汤</a>
+		</div>
+
+		<% if (msg) { %>
+			<div class="mb-6 border-2 border-black bg-neutral-50 p-3 font-mono text-xs">
+				<span class="font-bold">提示：</span><%= msg %>
+			</div>
+		<% } %>
+
+		<% if (!soups || soups.length === 0) { %>
+			<div class="border-2 border-dashed border-neutral-300 p-10 text-center font-mono text-xs text-neutral-500">
+				你还没有上传过海龟汤。
+			</div>
+		<% } else { %>
+			<div class="space-y-4">
+				<% soups.forEach((s)=> { %>
+					<div class="border-2 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+						<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+							<div>
+								<div class="font-serif font-bold text-xl"><%= s.title %></div>
+								<div class="mt-1 font-mono text-xs text-neutral-500">
+									#<%= s.id %> · <%= s.status_text %> · <%= formatDateTime ? formatDateTime(s.created_at) : s.created_at %>
+								</div>
+							</div>
+
+							<div class="flex flex-wrap items-center gap-2">
+								<a class="btn-sketch" href="/soups/<%= s.id %>">预览</a>
+								<a class="btn-sketch" href="/my/soups/<%= s.id %>/edit">编辑</a>
+
+								<form method="post" action="/my/soups/<%= s.id %>/delete"
+									onsubmit="return confirm('确认删除这碗海龟汤？删除后不可恢复。');">
+									<button type="submit" class="btn-sketch">删除</button>
+								</form>
+							</div>
+						</div>
+
+						<% if (s.status === 'rejected') { %>
+							<div class="mt-4 border-2 border-black bg-neutral-50 p-3 font-mono text-xs">
+								<div class="font-bold mb-1">驳回通知</div>
+								<div><%= s.review_note || '管理员未填写驳回原因。' %></div>
+							</div>
+						<% } %>
+
+						<% if (s.visibility === 'public' && s.status === 'approved') { %>
+							<div class="mt-4 border border-neutral-200 p-3 font-mono text-xs">
+								这碗汤正在公开汤池展示。若你编辑并重新公开发布，会进入待审核，审核通过前会暂时从公开汤池隐藏。
+							</div>
+						<% } %>
+
+						<% if (s.visibility === 'private' && s.status === 'approved') { %>
+							<div class="mt-4 border border-neutral-200 p-3 font-mono text-xs">
+								<% if (s.share_code) { %>
+									<div>分享码：<span class="font-bold"><%= s.share_code %></span></div>
+									<div>过期时间：<%= formatDateTime(s.share_expires_at) %></div>
+									<div>
+										状态：
+										<% if (s.share_expired) { %>
+											<span class="text-red-600">已过期</span>
+										<% } else { %>
+											<span class="text-green-600">有效</span>
+										<% } %>
+									</div>
+									<div class="mt-2">
+										<a class="underline" href="/share/<%= s.share_code %>">/share/<%= s.share_code %></a>
+									</div>
+								<% } else { %>
+									<div>暂无分享码。</div>
+								<% } %>
+
+								<form method="post" action="/my/soups/<%= s.id %>/regenerate-share" class="mt-3">
+									<button type="submit" class="btn-sketch">
+										<%= s.share_expired ? '重新生成分享码' : '刷新分享码' %>
+									</button>
+								</form>
+							</div>
+						<% } %>
+
+						<% if (s.visibility === 'private' && s.status === 'draft') { %>
+							<div class="mt-4 font-mono text-xs text-neutral-500">
+								草稿已保存。点击“编辑”可继续修改，也可以公开发布或改为私密分享。
+							</div>
+						<% } %>
+					</div>
+				<% }) %>
+			</div>
+		<% } %>
+	</main>
+</body>
+
+</html>

@@ -1,0 +1,114 @@
+<!-- 首页右下角：联系管理员（反馈聊天弹窗） -->
+
+<!-- 悬浮按钮 -->
+<button
+	id="fbOpen"
+	class="fixed bottom-6 right-6 z-40 border-2 border-black bg-white px-4 py-3 font-mono text-xs shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition"
+	type="button"
+>
+	联系管理员
+</button>
+
+<!-- 弹窗遮罩 -->
+<div id="fbModal" class="hidden fixed inset-0 z-50">
+	<div id="fbMask" class="absolute inset-0 bg-black/30"></div>
+
+	<!-- 弹窗主体 -->
+	<div
+		class="absolute bottom-6 right-6 w-[92vw] max-w-[420px] border-2 border-black bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]"
+	>
+		<!-- 头部 -->
+		<div
+			class="flex items-center justify-between px-4 py-3 border-b-2 border-black"
+		>
+			<div>
+				<div class="font-serif font-bold text-lg">联系管理员</div>
+				<div id="fbStatus" class="font-mono text-xs text-neutral-500">
+					待处理
+				</div>
+			</div>
+			<button id="fbClose" class="btn-sketch" type="button">关闭</button>
+		</div>
+
+		<!-- 提示（限制提前体现） -->
+		<div
+			class="px-4 py-2 border-b border-neutral-200 font-mono text-[11px] text-neutral-500 leading-relaxed"
+		>
+			<div>• 单条文字 ≤ 100 字；本会话最多 5 条文字消息</div>
+			<div>• 图片最多 3 张（单张 ≤ 2MB，支持 jpg/png/webp/gif）</div>
+		</div>
+
+		<!-- 消息区 -->
+		<div
+			id="fbMessages"
+			class="px-4 py-3 h-[320px] overflow-auto space-y-3 bg-white"
+		></div>
+
+		<!-- 错误提示 -->
+		<div
+			id="fbError"
+			class="hidden px-4 py-2 font-mono text-xs border-t border-neutral-200 text-red-600"
+		></div>
+
+		<!-- 输入区 -->
+		<form id="fbForm" class="border-t-2 border-black p-3 bg-neutral-50">
+			<div class="flex items-end gap-2">
+				<div class="flex-1">
+					<textarea
+						id="fbText"
+						class="w-full min-h-[70px] resize-none border-2 border-black rounded-none p-2 bg-neutral-100 outline-none"
+						placeholder="你有什么意见或者问题需要反馈吗？阿禾看到后会尽快回复的喔~"
+						maxlength="100"
+					></textarea>
+
+					<div
+						class="mt-2 flex items-center justify-between font-mono text-[11px] text-neutral-500"
+					>
+						<div id="fbRemain">剩余文字消息：5/5 · 剩余图片：3/3</div>
+						<div><span id="fbCount">0</span>/100</div>
+					</div>
+
+					<div class="mt-2 flex items-center justify-between">
+						<label class="btn-sketch cursor-pointer">
+							<input
+								id="fbImages"
+								type="file"
+								accept="image/*"
+								multiple
+								class="hidden"
+							/>
+							上传图片
+						</label>
+						<div class="font-mono text-[11px] text-neutral-500">最多 3 张</div>
+					</div>
+
+					<div id="fbPreview" class="mt-2 flex gap-2 flex-wrap"></div>
+				</div>
+
+				<!-- 发送按钮：圆形纸飞机 -->
+				<button
+					id="fbSend"
+					type="submit"
+					class="w-12 h-12 rounded-full border-2 border-black bg-white flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition"
+					title="发送"
+				>
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M22 2 11 13"></path>
+						<path d="M22 2 15 22 11 13 2 9 22 2z"></path>
+					</svg>
+				</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<script defer src="/js/feedback.js"></script>

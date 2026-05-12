@@ -1,0 +1,43 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+
+# 环境文件
+.env
+.env.production
+
+# 数据库
+data/
+*.db
+*.sqlite3
+
+# 用户上传
+uploads/
+tmp_uploads/
+
+# 日志 & 临时
+logs/
+*.log
+tmp/
+*.pid
+*.seed
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 构建产物
+dist/
+build/
+*.bundle.js
+*.min.js
+*.css.map
+*.js.map
+
+# 补丁和临时备份
+*.rej
+*.orig

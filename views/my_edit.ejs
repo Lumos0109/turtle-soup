@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+	<%- include('partials/head', { title }) %>
+</head>
+
+<body>
+	<%- include('partials/navbar') %>
+
+	<main class="max-w-5xl mx-auto px-4 py-10">
+		<div class="flex items-start justify-between gap-6 mb-8">
+			<div>
+				<h1 class="font-serif font-bold text-3xl">编辑海龟汤</h1>
+				<p class="mt-2 font-mono text-xs text-neutral-500">
+					当前状态：<span class="font-bold"><%= statusText %></span> · <%= editHint %>
+				</p>
+			</div>
+			<a href="/my" class="btn-sketch">返回我的汤库</a>
+		</div>
+
+		<div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+			<% if (error) { %>
+				<div class="mb-5 border-2 border-black bg-neutral-50 p-3 font-mono text-xs">
+					<span class="font-bold">提示：</span><%= error %>
+				</div>
+			<% } %>
+
+			<form method="post" action="/my/soups/<%= soup.id %>/edit" class="space-y-5">
+				<div>
+					<div class="font-mono text-xs text-neutral-600 mb-2">标题（必填，最多60字）</div>
+					<input name="title" value="<%= soup.title || '' %>"
+						class="w-full h-12 border-2 border-black rounded-none px-3 outline-none"
+						placeholder="请输入标题" maxlength="60" />
+				</div>
+
+				<div>
+					<div class="font-mono text-xs text-neutral-600 mb-2">汤面（必填，最多1000字）</div>
+					<textarea name="surface"
+						class="w-full border-2 border-black rounded-none p-3 min-h-[140px] resize-y outline-none"
+						placeholder="描述给玩家看到的表面故事" maxlength="1000"><%= soup.surface || '' %></textarea>
+				</div>
+
+				<div>
+					<div class="font-mono text-xs text-neutral-600 mb-2">汤底（必填，最多2000字）</div>
+					<textarea name="bottom"
+						class="w-full border-2 border-black rounded-none p-3 min-h-[160px] resize-y outline-none"
+						placeholder="真实原因" maxlength="2000"><%= soup.bottom || '' %></textarea>
+				</div>
+
+				<div class="border-2 border-black bg-neutral-50 p-4 space-y-3">
+					<label class="inline-flex items-center gap-2 font-mono text-xs cursor-pointer">
+						<input type="checkbox" name="has_host_manual" value="1" id="hasHostManual" <%= soup.has_host_manual ? 'checked' : '' %> />
+						有主持人手册
+					</label>
+					<div id="hostManualBox" class="<%= soup.has_host_manual ? '' : 'hidden' %>">
+						<div class="font-mono text-xs text-neutral-600 mb-2">主持人手册（勾选后必填，最多2000字）</div>
+						<textarea name="host_manual" id="hostManualInput"
+							class="w-full border-2 border-black rounded-none p-3 min-h-[160px] resize-y outline-none bg-white"
+							placeholder="给主持人的补充说明、引导提示、关键线索或控场建议" maxlength="2000"><%= soup.host_manual || '' %></textarea>
+					</div>
+				</div>
+
+				<div>
+					<div class="font-mono text-xs text-neutral-600 mb-2">标签（可多选）</div>
+					<div class="flex flex-wrap gap-2">
+						<% (tags || []).forEach((t)=> { %>
+							<label class="inline-flex items-center gap-2 border-2 border-black px-3 py-2 font-mono text-xs cursor-pointer hover:bg-black hover:text-white transition">
+								<input type="checkbox" name="tagIds" value="<%= t.id %>"
+									<%= (selectedTagIds || []).includes(t.id) ? 'checked' : '' %> />
+								<span><%= t.name %><%= t.is_hidden ? '（隐藏）' : '' %></span>
+							</label>
+						<% }) %>
+					</div>
+				</div>
+
+				<label class="inline-flex items-center gap-2 font-mono text-xs cursor-pointer">
+					<input type="checkbox" name="is_anonymous" value="1" <%= soup.is_anonymous ? 'checked' : '' %> />
+					匿名发布（隐藏作者）
+				</label>
+
+				<div class="border border-neutral-200 bg-neutral-50 p-4 font-mono text-xs text-neutral-600 leading-relaxed">
+					<div>• 公开发布 / 重新提交审核：内容会进入待审核，审核通过后才会出现在公开汤池。</div>
+					<div>• 私密分享：保存后生成或刷新 24 小时有效分享码。</div>
+					<div>• 保存草稿：仅自己可预览，不会出现在公开汤池，也不会保留旧分享码。</div>
+				</div>
+
+				<div class="flex flex-wrap justify-end gap-2 pt-2">
+					<button type="submit" name="action" value="public" class="btn-sketch-primary h-12 px-6">
+						公开发布
+					</button>
+
+					<button type="submit" name="action" value="private" class="btn-sketch h-12 px-6">
+						私密分享
+					</button>
+
+					<button type="submit" name="action" value="draft" class="btn-sketch h-12 px-6">
+						保存草稿
+					</button>
+				</div>
+			</form>
+		</div>
+	</main>
+<script>
+(function () {
+	const checkbox = document.getElementById('hasHostManual');
+	const box = document.getElementById('hostManualBox');
+	const input = document.getElementById('hostManualInput');
+	if (!checkbox || !box || !input) return;
+	function sync() {
+		box.classList.toggle('hidden', !checkbox.checked);
+		input.required = checkbox.checked;
+	}
+	checkbox.addEventListener('change', sync);
+	sync();
+})();
+</script>
+</body>
+
+</html>

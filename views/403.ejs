@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <%- include('partials/head', { title }) %>
+</head>
+
+<body>
+    <%- include('partials/navbar') %>
+
+        <main class="max-w-5xl mx-auto px-4 py-10">
+            <div class="flex items-center justify-center min-h-[60vh]">
+                <div
+                    class="w-full max-w-md p-8 border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-none">
+                    <div class="text-center mb-6">
+                        <div class="text-3xl font-serif font-bold">403</div>
+                        <div class="mt-2 font-mono text-xs text-neutral-500">你没有权限访问此页面</div>
+                    </div>
+                    <div class="flex justify-center">
+                        <a class="btn-sketch-primary" href="/">返回海龟汤池</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+</body>
+
+</html>

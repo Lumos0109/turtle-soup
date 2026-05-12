@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+	<%- include('partials/head', { title }) %>
+</head>
+
+<body>
+	<%- include('partials/navbar') %>
+
+		<main class="max-w-5xl mx-auto px-4 py-10">
+			<div class="flex items-start justify-between gap-6 mb-6">
+				<div>
+					<h1 class="font-serif font-bold text-3xl">反馈详情</h1>
+					<p class="mt-2 font-mono text-xs text-neutral-500">来自：<%= thread.from_name %> · #<%= thread.id %>
+					</p>
+				</div>
+				<a href="/admin/feedback" class="btn-sketch">返回列表</a>
+			</div>
+
+			<% if (msg) { %>
+				<div
+					class="mb-4 border-2 border-black bg-neutral-50 p-3 font-mono text-xs shadow-[6px_6px_0px_0px_rgba(0,0,0,0.12)]">
+					<span class="font-bold">提示：</span>
+					<%= msg %>
+				</div>
+				<% } %>
+
+					<div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 mb-6">
+						<div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4">
+							<form method="post" action="/admin/feedback/<%= thread.id %>/update"
+								class="flex items-end gap-2">
+								<div class="flex-1">
+									<div class="font-mono text-xs text-neutral-600 mb-2">主题（管理员可编辑）</div>
+									<input name="subject" value="<%= thread.subject %>"
+										class="w-full h-12 border-2 border-black px-3 outline-none" maxlength="50" />
+								</div>
+								<button type="submit" class="btn-sketch-primary h-12 px-6">保存主题</button>
+							</form>
+
+							<div class="flex items-end gap-2">
+								<% if (thread.status !=='closed' ) { %>
+									<form method="post" action="/admin/feedback/<%= thread.id %>/processed">
+										<button type="submit" class="btn-sketch h-12 px-6">已处理</button>
+									</form>
+
+									<form method="post" action="/admin/feedback/<%= thread.id %>/close"
+										onsubmit="return confirm('确认关闭这个会话？关闭后用户需要重新联系管理员才能开启新会话。');">
+										<button type="submit" class="btn-sketch h-12 px-6">关闭会话</button>
+									</form>
+									<% } else { %>
+										<div class="font-mono text-xs text-neutral-500 h-12 flex items-center">会话已关闭
+										</div>
+										<% } %>
+							</div>
+						</div>
+
+						<div class="mt-4 font-mono text-xs">
+							当前状态：
+							<span class="border-2 border-black px-2 py-1"><%= thread.status_text %></span>
+						</div>
+					</div>
+
+					<div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+						<div class="px-4 py-3 border-b-2 border-black flex items-center justify-between">
+							<div class="font-serif font-bold">对话</div>
+							<div class="font-mono text-xs border-2 border-black px-2 py-1"><%= thread.status_text %></div>
+						</div>
+
+						<div class="px-4 py-3 h-[420px] overflow-auto space-y-3">
+							<% if (!messages || messages.length===0) { %>
+								<div class="font-mono text-xs text-neutral-400 italic">暂无消息</div>
+								<% } else { %>
+									<% messages.forEach((m)=> { %>
+										<div class="flex <%= m.sender==='admin' ? 'justify-end' : 'justify-start' %>">
+											<div
+												class="max-w-[80%] border-2 border-black p-3 text-sm <%= m.sender==='admin' ? 'bg-black text-white' : 'bg-white text-black' %>">
+												<div
+													class="font-mono text-[10px] <%= m.sender==='admin' ? 'text-neutral-300' : 'text-neutral-500' %> mb-1">
+													<%= m.sender==='admin' ? '管理员' : '用户' %>
+												</div>
+
+												<% if (m.content) { %>
+													<div class="whitespace-pre-wrap"><%= m.content %></div>
+													<% } %>
+
+														<% if (m.attachments && m.attachments.length> 0) { %>
+															<div class="mt-2 flex gap-2 flex-wrap">
+																<% m.attachments.forEach((a)=> { %>
+																	<img src="<%= a.file_path %>"
+																		class="w-20 h-20 object-cover border border-neutral-200" />
+																	<% }) %>
+															</div>
+															<% } %>
+											</div>
+										</div>
+										<% }) %>
+											<% } %>
+						</div>
+
+						<div class="border-t-2 border-black p-3 bg-neutral-50">
+							<% if (thread.status==='closed' ) { %>
+								<div class="font-mono text-xs text-neutral-500">会话已关闭，无法回复。</div>
+								<% } else { %>
+									<form method="post" action="/admin/feedback/<%= thread.id %>/reply"
+										class="flex items-end gap-2">
+										<textarea name="content"
+											class="flex-1 min-h-[80px] border-2 border-black p-2 bg-white outline-none"
+											placeholder="回复用户（最多500字）" maxlength="500"></textarea>
+										<button type="submit" class="btn-sketch-primary h-12 px-6">发送</button>
+									</form>
+									<% } %>
+						</div>
+					</div>
+		</main>
+</body>
+
+</html>

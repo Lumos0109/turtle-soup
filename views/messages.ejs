@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<%- include('partials/head', { title }) %>
+</head>
+<body>
+	<%- include('partials/navbar') %>
+
+	<main class="max-w-5xl mx-auto px-4 py-10">
+		<div class="flex items-start justify-between gap-6 mb-8">
+			<div>
+				<h1 class="font-serif font-bold text-3xl">消息</h1>
+				<p class="mt-2 font-mono text-xs text-neutral-500">
+					这里会显示留言回复、管理员回复、审核通过/驳回等通知。
+				</p>
+			</div>
+			<a href="/" class="btn-sketch">返回首页</a>
+		</div>
+
+		<% if (msg) { %>
+			<div class="mb-6 border-2 border-black bg-neutral-50 p-3 font-mono text-xs">
+				<span class="font-bold">提示：</span><%= msg %>
+			</div>
+		<% } %>
+
+		<% if (!messages || messages.length === 0) { %>
+			<div class="border-2 border-dashed border-neutral-300 p-10 text-center font-mono text-xs text-neutral-500">
+				暂无消息。
+			</div>
+		<% } else { %>
+			<div class="space-y-4">
+				<% messages.forEach((m)=> { %>
+					<div class="border-2 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] <%= m.is_read ? 'opacity-80' : '' %>">
+						<div class="flex items-start justify-between gap-4">
+							<div>
+								<div class="font-mono text-xs text-neutral-500 mb-1">
+									<%= m.type_text %> · <%= m.created_at %>
+									<% if (!m.is_read) { %>
+										<span class="ml-2 border border-black px-1 py-0.5 text-black">新</span>
+									<% } %>
+								</div>
+								<div class="font-serif font-bold text-xl"><%= m.title %></div>
+							</div>
+
+							<% if (m.link_url) { %>
+								<a href="<%= m.link_url %>" class="btn-sketch whitespace-nowrap">查看</a>
+							<% } %>
+						</div>
+
+						<% if (m.content) { %>
+							<div class="mt-3 whitespace-pre-wrap text-neutral-800"><%= m.content %></div>
+						<% } %>
+					</div>
+				<% }) %>
+			</div>
+		<% } %>
+	</main>
+</body>
+</html>
