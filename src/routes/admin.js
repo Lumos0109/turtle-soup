@@ -36,6 +36,7 @@ const {
 	deleteAnnouncement,
 	uploadSticker,
 	deleteSticker,
+	closeRoom,
 } = require("../controllers/adminController");
 
 const {
@@ -99,6 +100,9 @@ router.post("/announcements", requireAdmin, createAnnouncement);
 router.post("/announcements/:id/update", requireAdmin, updateAnnouncement);
 router.post("/announcements/:id/active", requireAdmin, setActiveAnnouncement);
 router.post("/announcements/:id/delete", requireAdmin, deleteAnnouncement);
+
+// 海龟汤房间管理
+router.post("/rooms/:id/close", requireAdmin, closeRoom);
 
 // 房间表情包管理
 router.post("/stickers", requireAdmin, (req, res, next) => {

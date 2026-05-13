@@ -24,6 +24,42 @@
 	}
 
 
+	function initMobileModalLock() {
+		let scrollY = 0;
+		const modalSelector = '.fixed.inset-0, #fbModal';
+
+		function hasOpenModal() {
+			return Array.from(document.querySelectorAll(modalSelector)).some((el) => {
+				if (!el.id && !el.classList.contains('fixed')) return false;
+				const style = getComputedStyle(el);
+				return !el.classList.contains('hidden') && style.display !== 'none' && style.visibility !== 'hidden';
+			});
+		}
+
+		function lock() {
+			if (document.body.classList.contains('modal-open')) return;
+			scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+			document.body.style.top = `-${scrollY}px`;
+			document.body.classList.add('modal-open');
+		}
+
+		function unlock() {
+			if (!document.body.classList.contains('modal-open')) return;
+			document.body.classList.remove('modal-open');
+			document.body.style.top = '';
+			window.scrollTo(0, scrollY);
+		}
+
+		function sync() {
+			if (hasOpenModal()) lock(); else unlock();
+		}
+
+		const observer = new MutationObserver(sync);
+		observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
+		document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setTimeout(sync, 0); });
+		window.addEventListener('pageshow', unlock);
+	}
+
 	function initHostManualModal() {
 		const modal = document.getElementById("hostManualModal");
 		const openBtns = document.querySelectorAll(".js-host-manual-btn");
@@ -449,11 +485,13 @@
 
 	if (document.readyState === "loading") {
 		document.addEventListener("DOMContentLoaded", () => {
-			initHostManualModal();
+			initMobileModalLock();
+	initHostManualModal();
 			initDetailFlip();
 		});
 	} else {
-		initHostManualModal();
+		initMobileModalLock();
+	initHostManualModal();
 		initDetailFlip();
 	}
 })();

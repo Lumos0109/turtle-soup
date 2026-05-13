@@ -9,7 +9,7 @@
  */
 
 (function () {
-	const openBtn = document.getElementById("fbOpen");
+	const openTriggers = Array.from(document.querySelectorAll("#fbOpen, .js-open-feedback, [data-open-feedback]"));
 	const modal = document.getElementById("fbModal");
 	const mask = document.getElementById("fbMask");
 	const closeBtn = document.getElementById("fbClose");
@@ -26,7 +26,7 @@
 	const previewEl = document.getElementById("fbPreview");
 	const sendBtn = document.getElementById("fbSend");
 
-	if (!openBtn || !modal) return;
+	if (!modal) return;
 
 	let state = {
 		thread: null,
@@ -289,7 +289,8 @@
 		}
 	});
 
-	async function openFeedbackModal() {
+	async function openFeedbackModal(event) {
+		if (event) event.preventDefault();
 		setModal(true);
 
 		/**
@@ -299,7 +300,9 @@
 		await loadThread(shouldStartNew);
 	}
 
-	openBtn.addEventListener("click", openFeedbackModal);
+	openTriggers.forEach((trigger) => {
+		trigger.addEventListener("click", openFeedbackModal);
+	});
 
 	// 从消息中心点击“管理员回复”后会跳到 /#feedback，这里自动打开反馈对话框。
 	if (window.location.hash === "#feedback") {

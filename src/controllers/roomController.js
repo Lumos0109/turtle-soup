@@ -36,6 +36,64 @@ function touchRoom(db, roomId) {
 	db.prepare(`UPDATE rooms SET updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(roomId);
 }
 
+function markRoomLeft(db, room, user, options = {}) {
+	if (!db || !room || !user) return false;
+	const member = db.prepare(`SELECT role FROM room_members WHERE room_id=? AND user_id=?`).get(room.id, user.id);
+	const wasHost = Number(room.host_user_id || 0) === Number(user.id);
+	if (!member && !wasHost) return false;
+
+	db.prepare(`
+		UPDATE room_members
+		SET role=CASE WHEN role='host' THEN 'viewer' ELSE role END,
+			last_seen_at=datetime('now','localtime','-10 minutes')
+		WHERE room_id=? AND user_id=?
+	`).run(room.id, user.id);
+
+	if (wasHost) {
+		db.prepare(`UPDATE rooms SET host_user_id=NULL, updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(room.id);
+	}
+
+	if (options.addEvent !== false) {
+		addEvent(db, room.id, user.id, "leave", { content: `${user.username} 离开了房间` });
+	} else {
+		touchRoom(db, room.id);
+	}
+	return true;
+}
+
+function leaveOtherRoomsForUser(db, user, excludeRoomId = null) {
+	if (!user) return 0;
+	const offlineSeconds = Number(config.ROOM_MEMBER_OFFLINE_SECONDS) || 35;
+	const rooms = db.prepare(`
+		SELECT DISTINCT r.*
+		FROM rooms r
+		LEFT JOIN room_members rm ON rm.room_id=r.id AND rm.user_id=?
+		WHERE r.status != 'closed'
+		  AND (? IS NULL OR r.id != ?)
+		  AND (
+			r.host_user_id=?
+			OR datetime(rm.last_seen_at) >= datetime('now','localtime', ?)
+		  )
+		ORDER BY datetime(r.last_activity_at) DESC, r.id DESC
+	`).all(user.id, excludeRoomId, excludeRoomId, user.id, `-${offlineSeconds} seconds`);
+	let count = 0;
+	for (const otherRoom of rooms) {
+		if (markRoomLeft(db, otherRoom, user, { addEvent: true })) count += 1;
+	}
+	return count;
+}
+
+function setCurrentRoomSession(req, roomId) {
+	if (req && req.session) req.session.currentRoomId = roomId || null;
+}
+
+function clearCurrentRoomSession(req, roomId) {
+	if (!req || !req.session) return;
+	if (!roomId || Number(req.session.currentRoomId || 0) === Number(roomId)) {
+		req.session.currentRoomId = null;
+	}
+}
+
 function addEvent(db, roomId, userId, type, options = {}) {
 	const info = db.prepare(`
 		INSERT INTO room_events (room_id, user_id, type, content, question_id, answer, images_json)
@@ -112,13 +170,7 @@ function ensureMember(db, room, user, shouldCreateJoinEvent = false) {
 		return { joined: false, role };
 	}
 
-	const currentRoom = getCurrentRoomForUser(db, user.id, room.id);
-	if (currentRoom) {
-		const error = new Error(`你已经在房间 #${currentRoom.code} 里啦。一个账号同一时间只能待在一个房间，先回到那个房间或离开后再来喔。`);
-		error.statusCode = 409;
-		error.roomCode = currentRoom.code;
-		throw error;
-	}
+	leaveOtherRoomsForUser(db, user, room.id);
 
 	const onlineCount = countOnlineMembers(db, room.id);
 	const maxMembers = Number(config.ROOM_MAX_MEMBERS) || 12;
@@ -350,10 +402,8 @@ function renderRoomIndex(req, res) {
 function createRoom(req, res) {
 	cleanupRooms();
 	const db = getDb();
-	const currentRoom = getCurrentRoomForUser(db, req.session.user.id);
-	if (currentRoom) {
-		return res.redirect(`/rooms/${currentRoom.code}?msg=${encodeURIComponent("你已经在一个房间里啦，一个账号同一时间只能待在一个房间。")}`);
-	}
+	leaveOtherRoomsForUser(db, req.session.user, null);
+	clearCurrentRoomSession(req);
 
 	const activeCount = db.prepare(`SELECT COUNT(1) AS c FROM rooms WHERE status != 'closed'`).get().c;
 	const maxRooms = Number(config.ROOM_MAX_ACTIVE) || 5;
@@ -367,6 +417,7 @@ function createRoom(req, res) {
 	const info = db.prepare(`INSERT INTO rooms (code) VALUES (?)`).run(code);
 	const room = db.prepare(`SELECT * FROM rooms WHERE id=?`).get(info.lastInsertRowid);
 	ensureMember(db, room, req.session.user, false);
+	setCurrentRoomSession(req, room.id);
 	addEvent(db, room.id, null, "system", { content: "房间已创建，待主持人选汤ing" });
 	return res.redirect(`/rooms/${code}`);
 }
@@ -381,13 +432,9 @@ function renderRoom(req, res) {
 	const room = getRoomByCode(req.params.code);
 	if (!room || room.status === "closed") return res.status(404).render("404", { title: "房间不存在" });
 
-	const currentRoom = getCurrentRoomForUser(db, req.session.user.id, room.id);
-	if (currentRoom) {
-		return res.redirect(`/rooms/${currentRoom.code}?msg=${encodeURIComponent("你已经在这个房间里啦，想换房间请先离开当前房间。")}`);
-	}
-
 	try {
 		ensureMember(db, room, req.session.user, true);
+		setCurrentRoomSession(req, room.id);
 	} catch (error) {
 		if (error.roomCode) {
 			return res.redirect(`/rooms/${error.roomCode}?msg=${encodeURIComponent(error.message)}`);
@@ -420,8 +467,17 @@ function getState(req, res) {
 	if (!room) return;
 	const user = req.session.user;
 	const db = getDb();
+	const sessionRoomId = Number(req.session.currentRoomId || 0);
+	if (sessionRoomId && sessionRoomId !== Number(room.id)) {
+		const sessionRoom = db.prepare(`SELECT code FROM rooms WHERE id=? AND status != 'closed'`).get(sessionRoomId);
+		if (sessionRoom) {
+			return res.status(409).json({ message: "你已进入另一个房间，已自动退出当前房间", roomCode: sessionRoom.code });
+		}
+		clearCurrentRoomSession(req, sessionRoomId);
+	}
 	try {
 		ensureMember(db, room, user, false);
+		setCurrentRoomSession(req, room.id);
 	} catch (error) {
 		return res.status(error.statusCode || 500).json({
 			message: error.message || "进入房间失败",
@@ -472,11 +528,16 @@ function presence(req, res) {
 	const db = getDb();
 	const action = String(req.body.action || "heartbeat");
 	if (action === "leave") {
-		db.prepare(`UPDATE room_members SET last_seen_at=datetime('now','localtime','-10 minutes') WHERE room_id=? AND user_id=?`).run(room.id, user.id);
-		addEvent(db, room.id, user.id, "leave", { content: `${user.username} 离开了房间` });
+		markRoomLeft(db, room, user, { addEvent: true });
+		clearCurrentRoomSession(req, room.id);
 		return res.json({ ok: true });
 	}
+	const sessionRoomId = Number(req.session.currentRoomId || 0);
+	if (sessionRoomId && sessionRoomId !== Number(room.id)) {
+		return res.json({ ok: true, ignored: true });
+	}
 	db.prepare(`UPDATE room_members SET last_seen_at=${nowSqlExpr()} WHERE room_id=? AND user_id=?`).run(room.id, user.id);
+	setCurrentRoomSession(req, room.id);
 	return res.json({ ok: true });
 }
 
@@ -575,8 +636,45 @@ function answerQuestion(req, res) {
 		WHERE id=? AND room_id=?
 	`).run(answer, req.session.user.id, questionId, room.id);
 	db.prepare(`UPDATE room_events SET answer=? WHERE room_id=? AND question_id=? AND type='question'`).run(answer, room.id, questionId);
-	addEvent(db, room.id, req.session.user.id, "answer", { content: `回答「${q.content}」：${ANSWER_TEXT[answer]}`, questionId, answer });
+	const answerContent = `回答「${q.content}」：${ANSWER_TEXT[answer]}`;
+	const answerEvent = db.prepare(`SELECT id FROM room_events WHERE room_id=? AND question_id=? AND type='answer' ORDER BY id DESC LIMIT 1`).get(room.id, questionId);
+	if (answerEvent) {
+		db.prepare(`UPDATE room_events SET content=?, answer=?, user_id=?, created_at=${nowSqlExpr()} WHERE id=? AND room_id=?`).run(answerContent, answer, req.session.user.id, answerEvent.id, room.id);
+		touchRoom(db, room.id);
+	} else {
+		addEvent(db, room.id, req.session.user.id, "answer", { content: answerContent, questionId, answer });
+	}
 	return res.json({ ok: true });
+}
+
+function deleteHistoryEvent(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	if (!requireHost(req, res, room)) return;
+	const db = getDb();
+	const eventId = Number(req.params.eventId);
+	if (!Number.isFinite(eventId)) return res.status(400).json({ message: "参数错误" });
+	const event = db.prepare(`SELECT * FROM room_events WHERE id=? AND room_id=?`).get(eventId, room.id);
+	if (!event) return res.status(404).json({ message: "记录不存在" });
+	if (event.type === "question") {
+		const tx = db.transaction(() => {
+			if (event.question_id) {
+				db.prepare(`DELETE FROM room_events WHERE room_id=? AND question_id=?`).run(room.id, event.question_id);
+				db.prepare(`DELETE FROM room_questions WHERE room_id=? AND id=?`).run(room.id, event.question_id);
+			} else {
+				db.prepare(`DELETE FROM room_events WHERE room_id=? AND id=?`).run(room.id, eventId);
+			}
+			touchRoom(db, room.id);
+		});
+		tx();
+		return res.json({ ok: true });
+	}
+	if (event.type === "hint") {
+		db.prepare(`DELETE FROM room_events WHERE room_id=? AND id=? AND type='hint'`).run(room.id, eventId);
+		touchRoom(db, room.id);
+		return res.json({ ok: true });
+	}
+	return res.status(400).json({ message: "只能删除提问或提示记录" });
 }
 
 function postHint(req, res) {
@@ -663,6 +761,7 @@ module.exports = {
 	startSoup,
 	postQuestion,
 	answerQuestion,
+	deleteHistoryEvent,
 	postHint,
 	postChat,
 	postSticker,

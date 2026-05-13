@@ -46,6 +46,7 @@ router.post("/:code/presence", requireLogin, roomController.presence);
 router.post("/:code/start", requireLogin, roomController.startSoup);
 router.post("/:code/question", requireLogin, roomController.postQuestion);
 router.post("/:code/answer", requireLogin, roomController.answerQuestion);
+router.post("/:code/history/:eventId/delete", requireLogin, roomController.deleteHistoryEvent);
 router.post("/:code/chat", requireLogin, roomController.postChat);
 router.post("/:code/sticker", requireLogin, roomController.postSticker);
 router.post("/:code/finish", requireLogin, roomController.finishSoup);

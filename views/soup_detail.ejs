@@ -442,13 +442,21 @@ shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
 						</div>
 					</div>
 
-					<button type="button" class="js-facilitator-close inline-flex items-center justify-center p-1 hover:opacity-70" aria-label="关闭AI主持人">
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<circle cx="12" cy="12" r="10"/>
-							<path d="m15 9-6 6"/>
-							<path d="m9 9 6 6"/>
-						</svg>
-					</button>
+					<div class="flex shrink-0 items-center gap-2">
+						<button type="button" id="facilitatorSurfaceBtn" class="rounded-full border border-neutral-300 bg-white px-3 py-1.5 font-mono text-xs hover:border-black hover:bg-black hover:text-white" aria-expanded="false">汤面</button>
+						<button type="button" class="js-facilitator-close inline-flex items-center justify-center p-1 hover:opacity-70" aria-label="关闭AI主持人">
+							<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<circle cx="12" cy="12" r="10"/>
+								<path d="m15 9-6 6"/>
+								<path d="m9 9 6 6"/>
+							</svg>
+						</button>
+					</div>
+				</div>
+
+				<div id="facilitatorSurfacePanel" class="hidden border-b-2 border-black bg-white px-5 py-4">
+					<div class="mb-2 font-mono text-xs text-neutral-500">汤面</div>
+					<div class="max-h-40 overflow-y-auto whitespace-pre-wrap pr-2 text-sm leading-relaxed text-neutral-800 custom-scrollbar"><%= soup.surface %></div>
 				</div>
 
 				<% if (!currentUser) { %>
@@ -582,6 +590,8 @@ shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
 		const facilitatorModal = document.getElementById('facilitatorModal');
 		const openBtns = document.querySelectorAll('.js-facilitator-open');
 		const closeBtns = document.querySelectorAll('.js-facilitator-close');
+		const surfaceBtn = document.getElementById('facilitatorSurfaceBtn');
+		const surfacePanel = document.getElementById('facilitatorSurfacePanel');
 
 		function openFacilitatorModal() {
 			if (!facilitatorModal) return;
@@ -605,6 +615,14 @@ shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
 		openBtns.forEach((btn) => {
 			btn.addEventListener('click', openFacilitatorModal);
 		});
+
+		if (surfaceBtn && surfacePanel) {
+			surfaceBtn.addEventListener('click', () => {
+				const isOpen = !surfacePanel.classList.contains('hidden');
+				surfacePanel.classList.toggle('hidden', isOpen);
+				surfaceBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+			});
+		}
 
 		closeBtns.forEach((btn) => {
 			btn.addEventListener('click', closeFacilitatorModal);

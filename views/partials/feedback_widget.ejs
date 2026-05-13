@@ -1,13 +1,7 @@
-<!-- 首页右下角：联系管理员（反馈聊天弹窗） -->
+<!-- 联系管理员反馈弹窗：入口已移动到导航栏的“交流与支持”展开菜单中 -->
 
-<!-- 悬浮按钮 -->
-<button
-	id="fbOpen"
-	class="fixed bottom-6 right-6 z-40 border-2 border-black bg-white px-4 py-3 font-mono text-xs shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition"
-	type="button"
->
-	联系管理员
-</button>
+<!-- 隐藏触发器：兼容现有 /js/feedback.js，实际入口在导航栏的“交流与支持”里 -->
+<button id="fbOpen" class="hidden" type="button" aria-hidden="true" tabindex="-1">联系管理员</button>
 
 <!-- 弹窗遮罩 -->
 <div id="fbModal" class="hidden fixed inset-0 z-50">
@@ -15,7 +9,7 @@
 
 	<!-- 弹窗主体 -->
 	<div
-		class="absolute bottom-6 right-6 w-[92vw] max-w-[420px] border-2 border-black bg-white shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]"
+		class="mobile-modal-panel absolute inset-x-3 bottom-3 max-h-[calc(100dvh-1.5rem)] overflow-hidden border-2 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[92vw] sm:max-w-[420px] sm:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]"
 	>
 		<!-- 头部 -->
 		<div
@@ -41,7 +35,7 @@
 		<!-- 消息区 -->
 		<div
 			id="fbMessages"
-			class="px-4 py-3 h-[320px] overflow-auto space-y-3 bg-white"
+			class="mobile-modal-scroll px-4 py-3 h-[min(320px,38dvh)] overflow-auto space-y-3 bg-white custom-scrollbar"
 		></div>
 
 		<!-- 错误提示 -->
@@ -52,7 +46,7 @@
 
 		<!-- 输入区 -->
 		<form id="fbForm" class="border-t-2 border-black p-3 bg-neutral-50">
-			<div class="flex items-end gap-2">
+			<div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
 				<div class="flex-1">
 					<textarea
 						id="fbText"
@@ -89,7 +83,7 @@
 				<button
 					id="fbSend"
 					type="submit"
-					class="w-12 h-12 rounded-full border-2 border-black bg-white flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition"
+					class="h-12 w-full rounded-full border-2 border-black bg-white flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition sm:w-12"
 					title="发送"
 				>
 					<svg

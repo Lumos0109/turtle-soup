@@ -8,7 +8,7 @@
 <body>
 	<%- include('partials/navbar') %>
 
-	<main class="max-w-6xl mx-auto px-4 py-5" data-room-code="<%= room.code %>">
+	<main class="room-page max-w-6xl mx-auto px-4 py-5" data-room-code="<%= room.code %>">
 		<header class="mb-4 rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
 			<div class="flex items-center justify-between gap-3">
 				<div class="flex min-w-0 items-center gap-3">
@@ -19,6 +19,9 @@
 				</div>
 
 				<div class="flex shrink-0 items-center gap-2">
+					<button id="exitCurrentRoomBtn" class="room-icon-btn room-tooltip" data-tip="退出当前房间" type="button" aria-label="退出当前房间">
+						<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12h11"/><path d="m17 16 4-4-4-4"/><path d="M21 6.344V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1.344"/></svg>
+					</button>
 					<button id="openSeatsBtn" class="room-icon-btn room-tooltip" data-tip="座位" type="button" aria-label="座位">
 						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>
 					</button>
@@ -37,8 +40,8 @@
 
 		<div id="roomToast" class="fixed left-1/2 bottom-6 z-[90] -translate-x-1/2 rounded bg-black px-3 py-2 text-sm text-white opacity-0 transition-opacity"></div>
 
-		<div class="space-y-4">
-			<section class="rounded-2xl border-2 border-black bg-white p-4 sm:p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+		<div class="room-main-stack space-y-4">
+			<section class="room-soup-card rounded-2xl border-2 border-black bg-white p-4 sm:p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
 				<div class="flex items-start justify-between gap-3">
 					<div class="min-w-0">
 						<div class="font-mono text-xs text-neutral-500">当前汤</div>
@@ -102,8 +105,8 @@
 						</button>
 					</div>
 				</div>
-				<div id="chatList" class="h-[58vh] min-h-[420px] space-y-3 overflow-y-auto rounded-xl border border-neutral-100 bg-neutral-50 p-3 pr-1 custom-scrollbar"></div>
-				<form id="chatForm" class="mt-3 flex gap-2">
+				<div id="chatList" class="room-chat-list h-[58vh] min-h-[420px] space-y-3 overflow-y-auto rounded-xl border border-neutral-100 bg-neutral-50 p-3 pr-1 custom-scrollbar"></div>
+				<form id="chatForm" class="room-chat-form mt-3 flex gap-2">
 					<button id="openStickerModalBtn" class="room-icon-btn room-tooltip shrink-0" data-tip="发表情" type="button" aria-label="发表情">
 						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
 					</button>
@@ -117,7 +120,7 @@
 	</main>
 
 	<div id="stickerModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
-		<div class="flex max-h-[78vh] w-full max-w-xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel flex max-h-[78vh] w-full max-w-xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
 				<div>
 					<div class="font-serif text-xl font-bold">发表情</div>
@@ -132,7 +135,7 @@
 	</div>
 
 	<div id="seatsModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
-		<div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="mb-4 flex items-center justify-between gap-3">
 				<div>
 					<div class="font-serif text-xl font-bold">座位</div>
@@ -146,7 +149,7 @@
 	</div>
 
 	<div id="questionModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
-		<div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel w-full max-w-lg rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="mb-4 flex items-center justify-between gap-3">
 				<div class="font-serif text-xl font-bold">向主持人提问</div>
 				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="questionModal" type="button" aria-label="关闭">×</button>
@@ -179,8 +182,26 @@
 		</div>
 	</div>
 
+	<div id="editAnswerModal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 px-4">
+		<div class="mobile-modal-panel w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="mb-4 flex items-start justify-between gap-3">
+				<div>
+					<div class="font-serif text-xl font-bold">修改回答</div>
+					<div id="editAnswerQuestionText" class="mt-1 line-clamp-3 text-sm text-neutral-500"></div>
+				</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="editAnswerModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<div class="grid grid-cols-2 gap-2 font-mono text-xs">
+				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="yes" type="button">是</button>
+				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="no" type="button">否</button>
+				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="partial" type="button">是也不是</button>
+				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="irrelevant" type="button">无关</button>
+			</div>
+		</div>
+	</div>
+
 	<div id="hintModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
-		<div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel w-full max-w-lg rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="mb-4 flex items-center justify-between gap-3">
 				<div>
 					<div class="font-serif text-xl font-bold">主持人提示</div>
@@ -197,7 +218,7 @@
 	</div>
 
 	<div id="bottomModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
-		<div class="w-full max-w-xl rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel w-full max-w-xl rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="mb-4 flex items-center justify-between gap-3">
 				<div class="font-serif text-xl font-bold">汤底</div>
 				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="bottomModal" type="button" aria-label="关闭">×</button>
@@ -207,7 +228,7 @@
 	</div>
 
 	<div id="manualModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
-		<div class="w-full max-w-xl rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel w-full max-w-xl rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="mb-4 flex items-center justify-between gap-3">
 				<div class="font-serif text-xl font-bold">主持人手册</div>
 				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="manualModal" type="button" aria-label="关闭">×</button>
@@ -217,7 +238,7 @@
 	</div>
 
 	<div id="soupPickerModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 px-4">
-		<div class="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
 				<div>
 					<div class="font-serif text-xl font-bold">选择要玩的海龟汤</div>
@@ -251,7 +272,7 @@
 	</div>
 
 	<div id="roomRatingModal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 px-4">
-		<div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+		<div class="mobile-modal-panel w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="flex items-start justify-between gap-3">
 				<div>
 					<div class="font-serif text-xl font-bold">给这碗汤打分</div>

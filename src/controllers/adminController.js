@@ -6,6 +6,7 @@ function renderAdmin(req, res) {
 
 	const qUser = (req.query.qUser || "").trim();
 	const qSoup = (req.query.qSoup || "").trim();
+	const qRoom = (req.query.qRoom || "").trim();
 
 	const pendingSoups = db.prepare(`
 		SELECT s.id, s.title, s.created_at, COALESCE(u.username, 'Unknown') AS author_name
@@ -55,6 +56,33 @@ function renderAdmin(req, res) {
 		ORDER BY id DESC
 	`).all();
 
+	const rooms = db.prepare(`
+		SELECT
+			r.id, r.code, r.status, r.host_user_id, r.soup_id,
+			r.created_at, r.updated_at, r.last_activity_at, r.closed_at,
+			COALESCE(h.username, '暂无主持人') AS host_name,
+			s.title AS soup_title,
+			(
+				SELECT COUNT(1)
+				FROM room_members rm
+				WHERE rm.room_id=r.id
+				  AND datetime(rm.last_seen_at) >= datetime('now','localtime','-35 seconds')
+			) AS online_count
+		FROM rooms r
+		LEFT JOIN users h ON h.id=r.host_user_id
+		LEFT JOIN soups s ON s.id=r.soup_id
+		WHERE (?='' OR r.code LIKE ? OR h.username LIKE ? OR s.title LIKE ?)
+		ORDER BY
+			CASE r.status WHEN 'closed' THEN 1 ELSE 0 END,
+			datetime(r.last_activity_at) DESC,
+			r.id DESC
+		LIMIT 80
+	`).all(qRoom, `%${qRoom}%`, `%${qRoom}%`, `%${qRoom}%`).map((room) => ({
+		...room,
+		online_count: Number(room.online_count || 0),
+		statusText: room.status === "playing" ? "游玩中" : room.status === "finished" ? "已完结" : room.status === "closed" ? "已关闭" : "待开汤",
+	}));
+
 	res.render("admin", {
 		title: "管理后台",
 		pendingSoups,
@@ -63,8 +91,10 @@ function renderAdmin(req, res) {
 		users,
 		announcements,
 		stickers,
+		rooms,
 		qUser,
 		qSoup,
+		qRoom,
 		message: req.query.msg || null,
 		tab: req.query.tab || "review",
 	});
@@ -371,6 +401,37 @@ function deleteSticker(req, res) {
 	return res.redirect("/admin?tab=stickers&msg=表情已删除");
 }
 
+function closeRoom(req, res) {
+	const db = getDb();
+	const id = Number(req.params.id);
+	if (!Number.isFinite(id)) return res.redirect("/admin?tab=rooms&msg=参数错误");
+
+	const room = db.prepare(`SELECT * FROM rooms WHERE id=?`).get(id);
+	if (!room) return res.redirect("/admin?tab=rooms&msg=房间不存在");
+	if (room.status === "closed") return res.redirect("/admin?tab=rooms&msg=房间已经关闭");
+
+	const tx = db.transaction(() => {
+		db.prepare(`
+			UPDATE rooms
+			SET status='closed', host_user_id=NULL, closed_at=datetime('now','localtime'), updated_at=datetime('now','localtime'), last_activity_at=datetime('now','localtime')
+			WHERE id=?
+		`).run(id);
+		db.prepare(`
+			UPDATE room_members
+			SET role=CASE WHEN role='host' THEN 'viewer' ELSE role END,
+				last_seen_at=datetime('now','localtime','-10 minutes')
+			WHERE room_id=?
+		`).run(id);
+		db.prepare(`
+			INSERT INTO room_events (room_id, user_id, type, content)
+			VALUES (?, ?, 'system', '管理员手动关闭了房间')
+		`).run(id, req.session.user.id);
+	});
+	tx();
+
+	return res.redirect("/admin?tab=rooms&msg=已关闭房间");
+}
+
 module.exports = {
 	renderAdmin,
 	approveSoup,
@@ -388,4 +449,5 @@ module.exports = {
 	deleteAnnouncement,
 	uploadSticker,
 	deleteSticker,
+	closeRoom,
 };

@@ -10,7 +10,7 @@
     <div class="flex items-start justify-between gap-6 mb-8">
       <div>
         <h1 class="font-serif font-bold text-3xl">管理后台</h1>
-        <p class="mt-2 font-mono text-xs text-neutral-500">审核公开汤 · 管理公开汤池 · 管理标签 · 管理公告 · 管理表情 · 管理用户 · 处理反馈</p>
+        <p class="mt-2 font-mono text-xs text-neutral-500">审核公开汤 · 管理公开汤池 · 管理标签 · 管理公告 · 管理房间 · 管理表情 · 管理用户 · 处理反馈</p>
       </div>
       <a href="/" class="btn-sketch">返回</a>
     </div>
@@ -26,6 +26,7 @@
       <a href="/admin?tab=publicSoups" class="btn-sketch <%= tab==='publicSoups'?'bg-black text-white':'' %>">公开汤池</a>
       <a href="/admin?tab=tags" class="btn-sketch <%= tab==='tags'?'bg-black text-white':'' %>">标签</a>
       <a href="/admin?tab=announcements" class="btn-sketch <%= tab==='announcements'?'bg-black text-white':'' %>">公告</a>
+      <a href="/admin?tab=rooms" class="btn-sketch <%= tab==='rooms'?'bg-black text-white':'' %>">房间</a>
       <a href="/admin?tab=stickers" class="btn-sketch <%= tab==='stickers'?'bg-black text-white':'' %>">表情</a>
       <a href="/admin?tab=users" class="btn-sketch <%= tab==='users'?'bg-black text-white':'' %>">用户</a>
       <a href="/admin/feedback" class="btn-sketch">反馈</a>
@@ -193,6 +194,56 @@
                   <form method="post" action="/admin/announcements/<%= a.id %>/delete" onsubmit="return confirm('确认删除这条公告？');">
                     <button type="submit" class="btn-sketch">删除</button>
                   </form>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+
+    <% if (tab === 'rooms') { %>
+      <div class="border-2 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="font-serif font-bold text-xl">海龟汤房间管理</div>
+          <div class="font-mono text-xs text-neutral-500">显示最近 <%= rooms.length %> 个房间</div>
+        </div>
+
+        <form method="get" action="/admin" class="flex items-center gap-2 mb-6">
+          <input type="hidden" name="tab" value="rooms" />
+          <input name="qRoom" value="<%= qRoom || '' %>" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="搜索房间号 / 主持人 / 海龟汤标题" />
+          <button type="submit" class="btn-sketch-primary h-12 px-6">搜索</button>
+        </form>
+
+        <% if (!rooms || rooms.length === 0) { %>
+          <div class="text-center text-neutral-400 italic font-mono text-xs py-10">暂无房间</div>
+        <% } else { %>
+          <div class="space-y-3">
+            <% rooms.forEach((r)=> { %>
+              <div class="border border-neutral-200 p-4">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <div class="font-serif font-bold">房间 #<%= r.code %></div>
+                      <span class="font-mono text-xs px-2 py-1 border border-neutral-300 <%= r.status === 'closed' ? 'text-neutral-400' : 'text-green-700 bg-green-50' %>"><%= r.statusText %></span>
+                      <span class="font-mono text-xs px-2 py-1 border border-neutral-300">在线 <%= r.online_count %> 人</span>
+                    </div>
+                    <div class="mt-2 grid gap-1 text-sm text-neutral-600 sm:grid-cols-2">
+                      <div><span class="font-mono text-xs text-neutral-400">主持人：</span><%= r.host_name %></div>
+                      <div><span class="font-mono text-xs text-neutral-400">当前汤：</span><%= r.soup_title ? '《' + r.soup_title + '》' : '暂无' %></div>
+                    </div>
+                    <div class="mt-2 font-mono text-xs text-neutral-400">最后活动：<%= r.last_activity_at || r.updated_at || r.created_at %><% if (r.closed_at) { %> · 关闭：<%= r.closed_at %><% } %></div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <% if (r.status !== 'closed') { %>
+                      <a class="btn-sketch" href="/rooms/<%= r.code %>" target="_blank">查看</a>
+                      <form method="post" action="/admin/rooms/<%= r.id %>/close" onsubmit="return confirm('确认关闭房间 #<%= r.code %>？房间内用户会被退出。');">
+                        <button type="submit" class="btn-sketch">关闭房间</button>
+                      </form>
+                    <% } else { %>
+                      <span class="font-mono text-xs text-neutral-400">已关闭</span>
+                    <% } %>
+                  </div>
                 </div>
               </div>
             <% }) %>

@@ -1,11 +1,11 @@
 <header class="sticky top-0 z-50 w-full border-b-2 border-black bg-white/95 backdrop-blur">
-	<div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+	<div class="max-w-5xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between gap-3">
 		<a
 			href="/"
-			class="nav-logo-link flex items-center gap-2 group"
+			class="nav-logo-link flex min-w-0 items-center gap-2 group"
 			aria-label="返回首页"
 		>
-			<span class="relative inline-flex">
+			<span class="relative inline-flex shrink-0">
 				<div class="bg-black text-white p-1.5 rounded-sm group-hover:rotate-3 transition-transform">
 					<!-- turtle icon -->
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -30,16 +30,16 @@
 				</span>
 			</span>
 
-			<span class="font-serif font-bold text-xl tracking-tight">TURTLE SOUP</span>
+			<span class="truncate font-serif font-bold text-lg tracking-tight sm:text-xl">TURTLE SOUP</span>
 		</a>
 
-		<nav class="flex items-center gap-4">
-
+		<!-- 电脑端：保留原来的卡片按钮风格，把“去开房间”也放进导航栏 -->
+		<nav class="hidden shrink-0 items-center gap-3 sm:flex">
 			<div class="relative" id="siteSupportMenu">
 				<button
 					type="button"
-					id="siteSupportBtn"
-					class="btn-sketch inline-flex items-center gap-2 font-mono text-xs"
+					data-site-support-trigger
+					class="btn-sketch inline-flex shrink-0 items-center gap-2 font-mono text-xs"
 					aria-label="交流与支持"
 					aria-expanded="false"
 				>
@@ -60,34 +60,55 @@
 						<path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" />
 						<path d="M3 4h8" />
 					</svg>
-
-					<span class="hidden md:inline">交流与支持</span>
+					<span>交流与支持</span>
 				</button>
 
 				<div
 					id="siteSupportPanel"
-					class="hidden absolute right-0 top-full z-[90] mt-3 w-[min(92vw,380px)] rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_18px_50px_rgba(0,0,0,0.14)]"
+					class="site-support-panel hidden absolute right-0 top-full z-[90] mt-3 w-[min(92vw,380px)] rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_18px_50px_rgba(0,0,0,0.14)]"
 				>
 					<div class="mb-3">
 						<div class="font-serif text-lg font-bold text-black">
 							交流与支持
 						</div>
 						<div class="mt-1 text-xs font-mono text-neutral-500">
-							加入交流、支持维护、查看开源代码
+							联系管理员、加入交流、支持维护、查看开源代码
 						</div>
 					</div>
 
 					<div class="space-y-3">
+						<a
+							href="/#feedback"
+							class="js-open-feedback block rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition hover:border-black hover:bg-white"
+						>
+							<div class="support-action-row flex items-start gap-3">
+								<span class="support-action-icon mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+									<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+									</svg>
+								</span>
+
+								<span class="min-w-0 flex-1">
+									<span class="support-action-title block font-mono text-sm font-bold text-black">
+										联系管理员
+									</span>
+									<span class="support-action-desc mt-1 block text-xs leading-relaxed text-neutral-500">
+										反馈问题、提交建议，或者联系站主处理网站异常。
+									</span>
+								</span>
+							</div>
+						</a>
+
 						<button
 							type="button"
 							id="copyQQGroupBtn"
 							class="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 text-left transition hover:border-black hover:bg-white"
 							data-copy-text="684121136"
 						>
-							<div class="flex items-start gap-3">
-								<span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+							<div class="support-action-row flex items-start gap-3">
+								<span class="support-action-icon mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
 									<!-- QQ group icon -->
-<svg
+									<svg
 										width="19"
 										height="19"
 										viewBox="0 0 1024 1024"
@@ -99,10 +120,10 @@
 								</span>
 
 								<span class="min-w-0 flex-1">
-									<span class="block font-mono text-sm font-bold text-black">
+									<span class="support-action-title block font-mono text-sm font-bold text-black">
 										交流QQ群：684121136
 									</span>
-									<span class="mt-1 block text-xs leading-relaxed text-neutral-500">
+									<span class="support-action-desc mt-1 block text-xs leading-relaxed text-neutral-500">
 										复制群号，加入群聊交流、提供网站建议、创作者交流，或者查看当前网站优化进度。
 									</span>
 								</span>
@@ -115,10 +136,10 @@
 							rel="noopener noreferrer"
 							class="block rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition hover:border-black hover:bg-white"
 						>
-							<div class="flex items-start gap-3">
-								<span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+							<div class="support-action-row flex items-start gap-3">
+								<span class="support-action-icon mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
 									<!-- donate icon -->
-<svg
+									<svg
 										width="19"
 										height="19"
 										viewBox="0 0 24 24"
@@ -138,10 +159,10 @@
 								</span>
 
 								<span class="min-w-0 flex-1">
-									<span class="block font-mono text-sm font-bold text-black">
+									<span class="support-action-title block font-mono text-sm font-bold text-black">
 										打赏站主
 									</span>
-									<span class="mt-1 block text-xs leading-relaxed text-neutral-500">
+									<span class="support-action-desc mt-1 block text-xs leading-relaxed text-neutral-500">
 										服务器和 AI API 接口目前由站主自费维护，可以前往爱发电支持一下。
 									</span>
 								</span>
@@ -154,10 +175,10 @@
 							rel="noopener noreferrer"
 							class="block rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition hover:border-black hover:bg-white"
 						>
-							<div class="flex items-start gap-3">
-								<span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
+							<div class="support-action-row flex items-start gap-3">
+								<span class="support-action-icon mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
 									<!-- git repository icon -->
-<svg
+									<svg
 										width="19"
 										height="19"
 										viewBox="0 0 1024 1024"
@@ -169,10 +190,10 @@
 								</span>
 
 								<span class="min-w-0 flex-1">
-									<span class="block font-mono text-sm font-bold text-black">
+									<span class="support-action-title block font-mono text-sm font-bold text-black">
 										GitHub 开源仓库
 									</span>
-									<span class="mt-1 block text-xs leading-relaxed text-neutral-500">
+									<span class="support-action-desc mt-1 block text-xs leading-relaxed text-neutral-500">
 										查看项目源码、提交 issue，或者关注网站功能更新。
 									</span>
 								</span>
@@ -182,24 +203,28 @@
 				</div>
 			</div>
 
+			<a href="/rooms" target="_blank" rel="noopener" class="btn-sketch inline-flex items-center gap-2 font-mono text-xs">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+					<path d="M3 10.5 12 3l9 7.5" />
+					<path d="M5 10v11h14V10" />
+				</svg>
+				去开房间
+			</a>
+
 			<% if (currentUser) { %>
-				<!-- NEW SOUP（原版是 outline 风格按钮 + plus icon，移动端隐藏） -->
-				<a href="/soups/create"
-					class="btn-sketch hidden sm:inline-flex items-center gap-2 font-mono text-xs">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-						stroke-linecap="round" stroke-linejoin="round">
+				<a href="/soups/create" class="btn-sketch inline-flex items-center gap-2 font-mono text-xs">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M12 5v14M5 12h14" />
 					</svg>
 					新建海龟汤
 				</a>
 
-				<a href="/my"
-					class="btn-sketch hidden sm:inline-flex items-center gap-2 font-mono text-xs">
+				<a href="/my" class="btn-sketch inline-flex items-center gap-2 font-mono text-xs">
 					我的汤库
 				</a>
 
-				<a href="/messages"
-					class="btn-sketch hidden sm:inline-flex items-center gap-2 font-mono text-xs">
+				<a href="/messages" class="btn-sketch inline-flex items-center gap-2 font-mono text-xs">
 					消息
 					<% if ((unreadCount || 0) > 0) { %>
 						<span class="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1 bg-black text-white rounded-full text-[10px]">
@@ -208,102 +233,194 @@
 					<% } %>
 				</a>
 
+				<% if (currentUser.role==='admin' ) { %>
+					<a href="/admin" class="btn-sketch font-mono text-xs">后台</a>
+				<% } %>
+
 				<div class="h-6 w-px bg-neutral-200"></div>
 
-				<!-- 用户区：用户名 + 退出图标按钮 -->
-				<div class="flex items-center gap-3">
-					<span class="text-sm font-medium hidden sm:inline-block">
-						<%= currentUser.username %>
-					</span>
+				<div class="flex items-center gap-2">
+					<span class="max-w-24 truncate text-sm font-medium"><%= currentUser.username %></span>
 
+					<form method="post" action="/auth/logout" style="display:inline;">
+						<button
+							type="submit"
+							class="group relative w-9 h-9 flex items-center justify-center hover:bg-neutral-100 rounded-full transition"
+							aria-label="退出登录"
+						>
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+								stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+								<path d="M16 17l5-5-5-5" />
+								<path d="M21 12H9" />
+							</svg>
+
+							<span
+								class="pointer-events-none absolute left-1/2 top-full z-[80] mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2.5 py-1.5 text-xs font-mono text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+							>
+								退出登录
+								<span class="absolute left-1/2 -top-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-black" aria-hidden="true"></span>
+							</span>
+						</button>
+					</form>
+				</div>
+			<% } else { %>
+				<a href="/admin/login" class="flex items-center font-mono text-xs text-neutral-500 hover:text-black">
+					<svg class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+						stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+					</svg>
+					ADMIN
+				</a>
+
+				<a href="/auth/login" class="btn-sketch-primary">LOGIN</a>
+			<% } %>
+		</nav>
+
+		<!-- 手机端第一行：只放标题和登录/退出，下面另起一行放功能入口 -->
+		<div class="flex shrink-0 items-center gap-2 sm:hidden">
+			<% if (currentUser) { %>
+				<span class="max-w-[5.5rem] truncate text-sm font-medium"><%= currentUser.username %></span>
 				<form method="post" action="/auth/logout" style="display:inline;">
 					<button
 						type="submit"
-						class="group relative w-9 h-9 flex items-center justify-center hover:bg-neutral-100 rounded-full transition"
+						class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 bg-white"
 						aria-label="退出登录"
 					>
-						<!-- logout icon -->
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-							stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 							<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
 							<path d="M16 17l5-5-5-5" />
 							<path d="M21 12H9" />
 						</svg>
-
-						<span
-							class="pointer-events-none absolute left-1/2 top-full z-[80] mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black px-2.5 py-1.5 text-xs font-mono text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
-						>
-							退出登录
-
-							<span
-								class="absolute left-1/2 -top-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-black"
-								aria-hidden="true"
-							></span>
-						</span>
 					</button>
 				</form>
-				</div>
-
-				<% if (currentUser.role==='admin' ) { %>
-					<a href="/admin" class="btn-sketch font-mono text-xs">后台</a>
-					<% } %>
-
-						<% } else { %>
-							<!-- 登录前：ADMIN + LOGIN（原版布局） -->
-							<a href="/admin/login"
-								class="flex items-center font-mono text-xs text-neutral-500 hover:text-black">
-								<!-- shield icon -->
-								<svg class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-									stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-								</svg>
-								ADMIN
-							</a>
-
-							<a href="/auth/login" class="btn-sketch-primary">LOGIN</a>
-							<% } %>
-		</nav>
+			<% } else { %>
+				<a href="/auth/login" class="btn-sketch-primary px-3 py-2 text-xs">登录</a>
+			<% } %>
+		</div>
 	</div>
-	<% if (currentUser) { %>
-		<!-- 手机端快捷菜单：避免顶部导航被挤爆 -->
-		<div class="sm:hidden border-t border-neutral-200 bg-white">
-			<div class="max-w-5xl mx-auto px-4 py-2 overflow-x-auto">
-				<div class="flex items-center gap-2 min-w-max">
-					<a href="/soups/create"
-						class="btn-sketch font-mono text-xs">
-						新建海龟汤
-					</a>
 
-					<a href="/my"
-						class="btn-sketch font-mono text-xs">
-						我的汤库
-					</a>
+	<!-- 手机端第二行：横向轻量边框按钮，不占首页内容空间 -->
+	<div class="sm:hidden border-t border-neutral-200 bg-white">
+		<div class="max-w-5xl mx-auto px-3 py-2 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+			<div class="flex min-w-max items-center gap-2">
+				<button type="button" data-site-support-trigger class="mobile-nav-chip" aria-expanded="false">交流与支持</button>
+				<a href="/rooms" target="_blank" rel="noopener" class="mobile-nav-chip">去开房间</a>
 
-					<a href="/messages"
-						class="btn-sketch font-mono text-xs">
-						消息<% if ((unreadCount || 0) > 0) { %>（<%= unreadCount > 99 ? '99+' : unreadCount %>）<% } %>
+				<% if (currentUser) { %>
+					<a href="/soups/create" class="mobile-nav-chip">新建海龟汤</a>
+					<a href="/my" class="mobile-nav-chip">我的汤库</a>
+					<a href="/messages" class="mobile-nav-chip">
+						消息<% if ((unreadCount || 0) > 0) { %><span class="ml-1 rounded-full bg-black px-1.5 py-0.5 text-[10px] text-white"><%= unreadCount > 99 ? '99+' : unreadCount %></span><% } %>
 					</a>
 
 					<% if (currentUser.role==='admin' ) { %>
-						<a href="/admin"
-							class="btn-sketch font-mono text-xs">
-							后台
-						</a>
-						<% } %>
-				</div>
+						<a href="/admin" class="mobile-nav-chip">后台</a>
+					<% } %>
+				<% } %>
 			</div>
 		</div>
-		<% } %>
+	</div>
 </header>
+
+<style>
+	.mobile-nav-chip {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 2rem;
+		border: 1px solid rgb(212 212 212);
+		border-radius: 9999px;
+		background: white;
+		padding: .35rem .75rem;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+		font-size: .75rem;
+		line-height: 1;
+		white-space: nowrap;
+		color: rgb(23 23 23);
+	}
+
+	.mobile-nav-chip:active,
+	.mobile-nav-chip:hover {
+		border-color: black;
+		background: black;
+		color: white;
+	}
+
+	.site-support-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 115;
+		background: rgba(0, 0, 0, 0.28);
+		touch-action: none;
+	}
+
+	@media (min-width: 640px) {
+		.site-support-backdrop { display: none !important; }
+	}
+
+	@media (max-width: 639px) {
+		#siteSupportMenu { position: static !important; }
+
+		#siteSupportPanel {
+			position: fixed !important;
+			left: max(12px, env(safe-area-inset-left)) !important;
+			right: max(12px, env(safe-area-inset-right)) !important;
+			top: calc(112px + env(safe-area-inset-top)) !important;
+			width: auto !important;
+			max-width: none !important;
+			max-height: calc(100dvh - 128px - env(safe-area-inset-bottom)) !important;
+			margin-top: 0 !important;
+			overflow-y: auto;
+			-webkit-overflow-scrolling: touch;
+			box-sizing: border-box;
+			z-index: 120 !important;
+		}
+
+		@supports (height: 100svh) {
+			#siteSupportPanel {
+				max-height: calc(100svh - 128px - env(safe-area-inset-bottom)) !important;
+			}
+		}
+
+		#siteSupportPanel,
+		#siteSupportPanel * { min-width: 0; }
+
+		#siteSupportPanel .support-action-desc {
+			word-break: break-word;
+			overflow-wrap: anywhere;
+		}
+
+		html.site-support-open,
+		body.site-support-open {
+			overflow: hidden;
+			overscroll-behavior: none;
+		}
+	}
+</style>
 
 <script>
 (function () {
 	const wrap = document.getElementById('siteSupportMenu');
-	const btn = document.getElementById('siteSupportBtn');
 	const panel = document.getElementById('siteSupportPanel');
+	const supportButtons = Array.from(document.querySelectorAll('[data-site-support-trigger]'));
 	const copyBtn = document.getElementById('copyQQGroupBtn');
+	const mobileQuery = window.matchMedia('(max-width: 639px)');
+	let backdrop = document.getElementById('siteSupportBackdrop');
 
-	if (!wrap || !btn || !panel) return;
+	if (!panel || supportButtons.length === 0) return;
+
+	const panelPlaceholder = document.createComment('siteSupportPanel original position');
+	if (panel.parentNode) {
+		panel.parentNode.insertBefore(panelPlaceholder, panel);
+	}
+
+	if (!backdrop) {
+		backdrop = document.createElement('div');
+		backdrop.id = 'siteSupportBackdrop';
+		backdrop.className = 'site-support-backdrop hidden';
+		document.body.appendChild(backdrop);
+	}
 
 	function showToast(message) {
 		let toast = document.getElementById('nb-global-toast');
@@ -349,14 +466,47 @@
 		if (!ok) throw new Error('copy failed');
 	}
 
+	function setExpanded(value) {
+		supportButtons.forEach((btn) => btn.setAttribute('aria-expanded', value ? 'true' : 'false'));
+	}
+
+	function setPageLocked(locked) {
+		document.documentElement.classList.toggle('site-support-open', locked);
+		document.body.classList.toggle('site-support-open', locked);
+	}
+
+	function placePanelForViewport() {
+		if (mobileQuery.matches) {
+			if (panel.parentElement !== document.body) {
+				document.body.appendChild(panel);
+			}
+		} else if (panelPlaceholder.parentNode && panel.parentElement !== panelPlaceholder.parentNode) {
+			panelPlaceholder.parentNode.insertBefore(panel, panelPlaceholder.nextSibling);
+		}
+	}
+
+	function syncBackdrop() {
+		const isOpen = !panel.classList.contains('hidden');
+		placePanelForViewport();
+		if (isOpen && mobileQuery.matches) {
+			backdrop.classList.remove('hidden');
+			setPageLocked(true);
+		} else {
+			backdrop.classList.add('hidden');
+			setPageLocked(false);
+		}
+	}
+
 	function openPanel() {
 		panel.classList.remove('hidden');
-		btn.setAttribute('aria-expanded', 'true');
+		setExpanded(true);
+		syncBackdrop();
 	}
 
 	function closePanel() {
 		panel.classList.add('hidden');
-		btn.setAttribute('aria-expanded', 'false');
+		setExpanded(false);
+		syncBackdrop();
 	}
 
 	function togglePanel() {
@@ -367,11 +517,42 @@
 		}
 	}
 
-	btn.addEventListener('click', (event) => {
+	supportButtons.forEach((btn) => {
+		btn.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			togglePanel();
+		});
+	});
+
+	// 联系管理员入口交给隐藏的 #fbOpen 触发，兼容旧版 /js/feedback.js。
+	// 用 capture 提前截获，避免 href 跳转或其它监听重复触发。
+	panel.addEventListener('click', (event) => {
+		const feedbackLink = event.target.closest('.js-open-feedback');
+		if (!feedbackLink) return;
+
 		event.preventDefault();
 		event.stopPropagation();
-		togglePanel();
+		closePanel();
+		document.getElementById('fbOpen')?.click();
+	}, true);
+
+	panel.addEventListener('click', (event) => {
+		event.stopPropagation();
 	});
+
+	backdrop.addEventListener('click', (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		closePanel();
+	});
+
+	mobileQuery.addEventListener?.('change', () => {
+		placePanelForViewport();
+		syncBackdrop();
+	});
+
+	placePanelForViewport();
 
 	if (copyBtn) {
 		copyBtn.addEventListener('click', async (event) => {
@@ -391,7 +572,8 @@
 	}
 
 	document.addEventListener('click', (event) => {
-		if (!wrap.contains(event.target)) {
+		const clickedTrigger = supportButtons.some((btn) => btn.contains(event.target));
+		if (!clickedTrigger && !panel.contains(event.target) && (!wrap || !wrap.contains(event.target))) {
 			closePanel();
 		}
 	});

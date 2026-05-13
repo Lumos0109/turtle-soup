@@ -1,8 +1,13 @@
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 
 <title><%= title %> - <%= siteTitle %></title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#ffffff" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="<%= siteTitle %>" />
+<link rel="manifest" href="/manifest.webmanifest" />
 
 <!-- 同款字体：Inter / JetBrains Mono / Lora（衬线大标题） -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,3 +19,4 @@
 
 <link rel="stylesheet" href="/css/site.css" />
 <script defer src="/js/ui.js"></script>
+<script defer src="/js/pwa.js"></script>

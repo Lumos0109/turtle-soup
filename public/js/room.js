@@ -4,12 +4,70 @@ document.addEventListener("DOMContentLoaded", () => {
 	const roomCode = main.dataset.roomCode;
 	const api = `/rooms/${roomCode}`;
 
+	function initMobileViewportFix() {
+		const root = document.documentElement;
+		let raf = 0;
+
+		function applyViewportVars() {
+			raf = 0;
+			const vv = window.visualViewport;
+			const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight);
+			const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth);
+			root.style.setProperty("--app-height", `${height}px`);
+			root.style.setProperty("--app-width", `${width}px`);
+			if (vv) {
+				const keyboardInset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+				root.style.setProperty("--keyboard-inset", `${keyboardInset}px`);
+			}
+		}
+
+		function scheduleViewportSync() {
+			if (raf) cancelAnimationFrame(raf);
+			raf = requestAnimationFrame(applyViewportVars);
+		}
+
+		scheduleViewportSync();
+		window.visualViewport?.addEventListener("resize", scheduleViewportSync);
+		window.visualViewport?.addEventListener("scroll", scheduleViewportSync);
+		window.addEventListener("resize", scheduleViewportSync);
+		window.addEventListener("orientationchange", () => setTimeout(scheduleViewportSync, 250));
+
+		document.addEventListener("focusin", (e) => {
+			if (!e.target.matches("input, textarea, select")) return;
+			document.body.classList.add("mobile-keyboard-active");
+			setTimeout(() => {
+				scheduleViewportSync();
+
+				const form = e.target.closest("form");
+				if (e.target.id === "chatInput" && form) {
+					form.scrollIntoView({ block: "end", inline: "nearest" });
+					return;
+				}
+
+				e.target.scrollIntoView({ block: "center", inline: "nearest" });
+			}, 220);
+		});
+
+		document.addEventListener("focusout", () => {
+			setTimeout(() => {
+				document.body.classList.remove("mobile-keyboard-active");
+				scheduleViewportSync();
+			}, 180);
+		});
+	}
+
+	initMobileViewportFix();
+
 	let state = null;
 	let currentSoupId = null;
 	let historyFilter = "all";
 	let selectedRatingScore = 0;
 	let leavingByBackButton = false;
 	let soupSurfaceExpanded = false;
+	let lastHistorySignature = "";
+	let lastChatSignature = "";
+	let lastStickerSignature = "";
+	let editingQuestionId = null;
 
 	const $ = (id) => document.getElementById(id);
 	const toastEl = $("roomToast");
@@ -33,6 +91,24 @@ document.addEventListener("DOMContentLoaded", () => {
 			.replaceAll(">", "&gt;")
 			.replaceAll('"', "&quot;")
 			.replaceAll("'", "&#039;");
+	}
+
+	function eventsSignature(events) {
+		return (events || []).map((e) => [
+			e.id,
+			e.type,
+			e.questionId || "",
+			e.answer || "",
+			e.content || "",
+			(e.images || []).join(","),
+			e.createdAt || "",
+		].join("\u001f")).join("\u001e");
+	}
+
+	function resetRenderCache() {
+		lastHistorySignature = "";
+		lastChatSignature = "";
+		lastStickerSignature = "";
 	}
 
 	async function postJson(url, body = {}) {
@@ -105,14 +181,30 @@ document.addEventListener("DOMContentLoaded", () => {
 		return false;
 	}
 
-	function answerButtons(questionId) {
+	function answerButtons(questionId, currentAnswer = null) {
 		if (!state?.viewer?.isHost) return "";
+		const btn = (answer, text) => {
+			const active = currentAnswer === answer ? "border-black bg-black text-white" : "border bg-white/60 hover:border-black";
+			return `<button class="room-answer-btn rounded-full px-2 py-1 ${active}" data-question-id="${questionId}" data-answer="${answer}" type="button">${text}</button>`;
+		};
 		return `
 			<div class="mt-2 flex flex-wrap gap-1 font-mono text-xs">
-				<button class="room-answer-btn rounded-full border bg-white/60 px-2 py-1 hover:border-black" data-question-id="${questionId}" data-answer="yes" type="button">是</button>
-				<button class="room-answer-btn rounded-full border bg-white/60 px-2 py-1 hover:border-black" data-question-id="${questionId}" data-answer="no" type="button">否</button>
-				<button class="room-answer-btn rounded-full border bg-white/60 px-2 py-1 hover:border-black" data-question-id="${questionId}" data-answer="partial" type="button">是也不是</button>
-				<button class="room-answer-btn rounded-full border bg-white/60 px-2 py-1 hover:border-black" data-question-id="${questionId}" data-answer="irrelevant" type="button">无关</button>
+				${btn("yes", "是")}
+				${btn("no", "否")}
+				${btn("partial", "是也不是")}
+				${btn("irrelevant", "无关")}
+			</div>`;
+	}
+
+	function historyHostActions(event) {
+		if (!state?.viewer?.isHost) return "";
+		const edit = event.type === "question"
+			? `<button class="room-edit-answer-btn rounded-full border border-neutral-300 bg-white/70 px-2 py-1 hover:border-black" data-question-id="${event.questionId}" data-question-content="${esc(event.content)}" type="button">修改回答</button>`
+			: "";
+		return `
+			<div class="mt-2 flex flex-wrap gap-1 font-mono text-xs">
+				${edit}
+				<button class="room-delete-history-btn rounded-full border border-red-200 bg-white/70 px-2 py-1 text-red-600 hover:border-red-600" data-event-id="${event.id}" type="button">删除记录</button>
 			</div>`;
 	}
 
@@ -120,6 +212,9 @@ document.addEventListener("DOMContentLoaded", () => {
 		const list = $("historyList");
 		if (!list || !state) return;
 		const items = state.events.filter(shouldShowHistoryEvent);
+		const sig = `${historyFilter}|host=${state.viewer?.isHost ? 1 : 0}|${eventsSignature(items)}`;
+		if (sig === lastHistorySignature) return;
+		lastHistorySignature = sig;
 		if (items.length === 0) {
 			list.innerHTML = `<div class="py-8 text-center font-mono text-xs text-neutral-400">暂无记录</div>`;
 			return;
@@ -135,7 +230,8 @@ document.addEventListener("DOMContentLoaded", () => {
 							<div class="font-mono text-xs opacity-70">${esc(meta.text)} · ${esc(e.username)} · ${esc(e.createdAt)}</div>
 							<div class="mt-1 whitespace-pre-wrap text-sm leading-relaxed">${esc(e.content)}</div>
 							${images}
-							${e.type === "question" && !e.answer ? answerButtons(e.questionId) : ""}
+							${e.type === "question" ? answerButtons(e.questionId, e.answer) : ""}
+							${historyHostActions(e)}
 						</div>
 					</div>
 				</div>`;
@@ -147,6 +243,9 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (!list || !state) return;
 		const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 40;
 		const events = state.events;
+		const sig = `host=${state.viewer?.isHost ? 1 : 0}|${eventsSignature(events)}`;
+		if (sig === lastChatSignature) return;
+		lastChatSignature = sig;
 		if (events.length === 0) {
 			list.innerHTML = `<div class="py-10 text-center font-mono text-xs text-neutral-400">还没有讨论内容</div>`;
 			return;
@@ -197,6 +296,9 @@ document.addEventListener("DOMContentLoaded", () => {
 		const list = $("stickerList");
 		if (!list || !state) return;
 		const stickers = state.stickers || [];
+		const sig = stickers.map((sticker) => `${sticker.id}:${sticker.url}:${sticker.name || ""}`).join("|");
+		if (sig === lastStickerSignature) return;
+		lastStickerSignature = sig;
 		if (stickers.length === 0) {
 			list.innerHTML = `<div class="py-10 text-center font-mono text-xs text-neutral-400">暂无表情，请管理员先在后台上传</div>`;
 			return;
@@ -360,13 +462,16 @@ document.addEventListener("DOMContentLoaded", () => {
 			toast("复制失败，请手动复制地址栏链接");
 		}
 	});
-	$("backToRoomsBtn")?.addEventListener("click", async () => {
+	async function leaveCurrentRoomAndGo() {
 		leavingByBackButton = true;
 		try {
 			await postJson(`${api}/presence`, { action: "leave" });
 		} catch (_) {}
 		window.location.href = "/rooms";
-	});
+	}
+
+	$("backToRoomsBtn")?.addEventListener("click", leaveCurrentRoomAndGo);
+	$("exitCurrentRoomBtn")?.addEventListener("click", leaveCurrentRoomAndGo);
 	$("toggleSoupSurfaceBtn")?.addEventListener("click", () => {
 		soupSurfaceExpanded = !soupSurfaceExpanded;
 		syncSurfaceToggle();
@@ -462,14 +567,39 @@ document.addEventListener("DOMContentLoaded", () => {
 			doPost(`${api}/answer`, { questionId, answer }, "已回答");
 			return;
 		}
+		const deleteBtn = e.target.closest(".room-delete-history-btn");
+		if (deleteBtn) {
+			const eventId = Number(deleteBtn.dataset.eventId);
+			if (!Number.isFinite(eventId)) return;
+			if (!confirm("确认删除这条历史记录吗？提问记录会连同对应回答一起删除。")) return;
+			doPost(`${api}/history/${eventId}/delete`, {}, "已删除记录");
+			return;
+		}
+		const editBtn = e.target.closest(".room-edit-answer-btn");
+		if (editBtn) {
+			editingQuestionId = Number(editBtn.dataset.questionId);
+			$("editAnswerQuestionText").textContent = editBtn.dataset.questionContent || "";
+			openModal("editAnswerModal");
+			return;
+		}
 		const filterBtn = e.target.closest(".room-filter-chip");
 		if (filterBtn) {
 			historyFilter = filterBtn.dataset.historyFilter || "all";
 			document.querySelectorAll(".room-filter-chip").forEach((btn) => {
 				btn.classList.toggle("is-active", btn === filterBtn);
 			});
+			lastHistorySignature = "";
 			renderHistory();
 		}
+	});
+
+	document.querySelectorAll(".edit-answer-choice").forEach((btn) => {
+		btn.addEventListener("click", async () => {
+			if (!Number.isFinite(editingQuestionId)) return;
+			await doPost(`${api}/answer`, { questionId: editingQuestionId, answer: btn.dataset.answer }, "已修改回答");
+			editingQuestionId = null;
+			closeModal("editAnswerModal");
+		});
 	});
 
 	// 选汤弹窗
