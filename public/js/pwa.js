@@ -1,47 +1,22 @@
 (function () {
   if (!('serviceWorker' in navigator)) return;
 
-  let hasReloadedForUpdate = false;
+  window.addEventListener('load', async function () {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        updateViaCache: 'none',
+      });
 
-  function reloadOnceAfterUpdate() {
-    if (hasReloadedForUpdate) return;
-    hasReloadedForUpdate = true;
-
-    const key = 'hgt_sw_refresh_' + Date.now().toString().slice(0, 8);
-    if (sessionStorage.getItem(key) === '1') return;
-    sessionStorage.setItem(key, '1');
-
-    window.location.reload();
-  }
-
-  window.addEventListener('load', function () {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then(function (registration) {
-        registration.update().catch(function () {});
-
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-
-        registration.addEventListener('updatefound', function () {
-          const worker = registration.installing;
-          if (!worker) return;
-
-          worker.addEventListener('statechange', function () {
-            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-              worker.postMessage({ type: 'SKIP_WAITING' });
-            }
-          });
-        });
-      })
-      .catch(function () {});
+      registration.update().catch(function () {});
+    } catch (error) {
+      // PWA is optional. Ignore registration failures.
+    }
   });
 
-  navigator.serviceWorker.addEventListener('controllerchange', reloadOnceAfterUpdate);
-  navigator.serviceWorker.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'HGT_SW_UPDATED') {
-      reloadOnceAfterUpdate();
-    }
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    const reloadKey = 'hgt-sw-reloaded-v3';
+    if (sessionStorage.getItem(reloadKey)) return;
+    sessionStorage.setItem(reloadKey, '1');
+    window.location.reload();
   });
 })();
