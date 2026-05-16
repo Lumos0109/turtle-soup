@@ -1,3 +1,5 @@
+以下都是AI写的，我并不知道对不对嘻嘻。
+
 # HGT Site（海龟汤站点）
 
 这是清理后的最小可部署版本：Express + EJS + SQLite + Docker。代码和运行数据已分离，生产迁移只需要搬主库和上传文件。
@@ -186,9 +188,3 @@ sudo docker compose exec app node -e "const {initDatabase,getDb}=require('./src/
 
 如果用户数、海龟汤数、留言数正常，就说明主库迁移成功。上传图片如果显示异常，优先检查 `uploads/` 是否复制到了新项目根目录。
 
-## 维护原则
-
-- 不提交 `node_modules/`、`.env*`、`data/`、`uploads/`。
-- 不在生产服务器直接改数据库；先备份 `data/hgt.sqlite3`。
-- 修改数据库结构只在 `src/db/database.js` 增加兼容迁移，不重建旧表。
-- Windows、Linux、Docker 都重新 `npm ci`，不要跨系统复制 `node_modules/`。
