@@ -2,7 +2,7 @@ const { getDb } = require("../db/database");
 const { canAccessSoup } = require("../utils/access");
 const { LLM_BASE_URL, LLM_API_KEY, LLM_MODEL } = require("../config");
 
-const DAILY_LIMIT = 100;
+const DAILY_LIMIT = 1000;
 const MAX_QUESTION_LEN = 100;
 
 // Quota day resets at 06:00 Beijing time (UTC+8) = UTC+2 midnight
@@ -157,7 +157,7 @@ async function askFacilitator(req, res) {
         `SELECT query_count FROM facilitator_usage WHERE user_id = ? AND quota_day = ?`
     ).get(userId, quotaDay);
     if (usageRow && usageRow.query_count >= DAILY_LIMIT) {
-        return res.status(429).json({ message: "今日提问次数已达上限（100次），明早6点后重置" });
+        return res.status(429).json({ message: "今日提问次数已达上限（1000次），明早6点后重置" });
     }
 
     const soup = db.prepare(`SELECT * FROM soups WHERE id = ?`).get(soupId);
