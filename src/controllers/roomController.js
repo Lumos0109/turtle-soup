@@ -1,14 +1,16 @@
 const crypto = require("crypto");
 const { getDb } = require("../db/database");
 const config = require("../config");
+const { answerSoupQuestion } = require("./facilitatorController");
 
 const ANSWER_VALUES = new Set(["yes", "no", "partial", "irrelevant"]);
 const ANSWER_TEXT = {
 	yes: "是",
 	no: "否",
-	partial: "是也不是",
+	partial: "部分是",
 	irrelevant: "无关",
 };
+const AI_HOST_TIP = "当前房间是AI主持人，AI有些笨笨的，有些关键问题记得反复确认喔~如果你认为已经推导出汤底了，可以直接查看！";
 
 function nowSqlExpr() {
 	return "datetime('now','localtime')";
@@ -161,12 +163,57 @@ function isHost(room, user) {
 	return !!(user && room && Number(room.host_user_id) === Number(user.id));
 }
 
+function isAiHostEnabled(room) {
+	return Number(room?.ai_host_enabled || 0) === 1;
+}
+
+function canUseAiHostPicker(room, user) {
+	if (!room || !user) return false;
+	if (room.status !== "waiting") return false;
+	if (room.soup_id) return false;
+	if (room.host_user_id) return false;
+	if (isAiHostEnabled(room)) return false;
+	return true;
+}
+
+function getOnlineMemberCount(db, roomId) {
+	return Number(countOnlineMembers(db, roomId) || 0);
+}
+
+function getFinishVoteState(db, roomId) {
+	const onlineCount = getOnlineMemberCount(db, roomId);
+	const row = db.prepare(`
+		SELECT
+			SUM(CASE WHEN vote='yes' THEN 1 ELSE 0 END) AS yes_count,
+			SUM(CASE WHEN vote='no' THEN 1 ELSE 0 END) AS no_count
+		FROM room_finish_votes
+		WHERE room_id=?
+	`).get(roomId);
+	const yesCount = Number(row?.yes_count || 0);
+	const noCount = Number(row?.no_count || 0);
+	return {
+		yesCount,
+		noCount,
+		onlineCount,
+		needed: Math.floor(onlineCount / 2) + 1,
+		passed: yesCount > onlineCount / 2,
+	};
+}
+
 function ensureMember(db, room, user, shouldCreateJoinEvent = false) {
 	const existing = db.prepare(`SELECT * FROM room_members WHERE room_id=? AND user_id=?`).get(room.id, user.id);
 	const role = room.host_user_id && Number(room.host_user_id) === Number(user.id) ? "host" : "viewer";
+	const offlineSeconds = Number(config.ROOM_MEMBER_OFFLINE_SECONDS) || 35;
 
 	if (existing) {
+		const wasOnline = Number(db.prepare(`
+			SELECT CASE WHEN datetime(?) >= datetime('now','localtime', ?) THEN 1 ELSE 0 END AS online
+		`).get(existing.last_seen_at, `-${offlineSeconds} seconds`).online || 0) === 1;
 		db.prepare(`UPDATE room_members SET role=?, last_seen_at=${nowSqlExpr()} WHERE room_id=? AND user_id=?`).run(role, room.id, user.id);
+		if (shouldCreateJoinEvent && !wasOnline) {
+			addEvent(db, room.id, user.id, "join", { content: `${user.username} 进入了房间` });
+			if (isAiHostEnabled(room) && room.status === "playing") addEvent(db, room.id, null, "system", { content: AI_HOST_TIP });
+		}
 		return { joined: false, role };
 	}
 
@@ -181,7 +228,10 @@ function ensureMember(db, room, user, shouldCreateJoinEvent = false) {
 	}
 
 	db.prepare(`INSERT INTO room_members (room_id, user_id, role) VALUES (?, ?, ?)`).run(room.id, user.id, role);
-	if (shouldCreateJoinEvent) addEvent(db, room.id, user.id, "join", { content: `${user.username} 进入了房间` });
+	if (shouldCreateJoinEvent) {
+		addEvent(db, room.id, user.id, "join", { content: `${user.username} 进入了房间` });
+		if (isAiHostEnabled(room) && room.status === "playing") addEvent(db, room.id, null, "system", { content: AI_HOST_TIP });
+	}
 	return { joined: true, role };
 }
 
@@ -225,9 +275,58 @@ function getCurrentRoomForUser(db, userId, excludeRoomId = null) {
 	return getActiveRoomForUser(db, userId, excludeRoomId) || getHostedOpenRoomForUser(db, userId, excludeRoomId);
 }
 
+function buildRoomAiHistory(db, roomId, excludeQuestionId = null) {
+	const rows = db.prepare(`
+		SELECT content, answer
+		FROM room_questions
+		WHERE room_id=?
+		  AND answer IS NOT NULL
+		  AND (? IS NULL OR id != ?)
+		ORDER BY id DESC
+		LIMIT 30
+	`).all(roomId, excludeQuestionId, excludeQuestionId).reverse();
+	const history = [];
+	for (const row of rows) {
+		history.push({ role: "user", content: row.content });
+		history.push({ role: "assistant", content: ANSWER_TEXT[row.answer] || "无关" });
+	}
+	return history;
+}
+
+async function answerRoomQuestionWithAi(db, room, question) {
+	if (!isAiHostEnabled(room) || room.status !== "playing" || !room.soup_id) return null;
+	if (!question || question.answer) return null;
+	const soup = db.prepare(`SELECT * FROM soups WHERE id=?`).get(room.soup_id);
+	if (!soup) return null;
+
+	const result = await answerSoupQuestion({
+		soup,
+		userId: question.user_id,
+		question: question.content,
+		history: buildRoomAiHistory(db, room.id, question.id),
+	});
+	const answer = result.answerKey;
+	db.prepare(`
+		UPDATE room_questions
+		SET status='answered', answer=?, answered_by=NULL, answered_at=${nowSqlExpr()}
+		WHERE id=? AND room_id=?
+	`).run(answer, question.id, room.id);
+	db.prepare(`UPDATE room_events SET answer=? WHERE room_id=? AND question_id=? AND type='question'`).run(answer, room.id, question.id);
+	const answerContent = `AI主持人回答「${question.content}」：${ANSWER_TEXT[answer]}`;
+	const answerEvent = db.prepare(`SELECT id FROM room_events WHERE room_id=? AND question_id=? AND type='answer' ORDER BY id DESC LIMIT 1`).get(room.id, question.id);
+	if (answerEvent) {
+		db.prepare(`UPDATE room_events SET content=?, answer=?, user_id=NULL, created_at=${nowSqlExpr()} WHERE id=? AND room_id=?`).run(answerContent, answer, answerEvent.id, room.id);
+		touchRoom(db, room.id);
+	} else {
+		addEvent(db, room.id, null, "answer", { content: answerContent, questionId: question.id, answer });
+	}
+	return answer;
+}
+
 function mapRoomState(room, user) {
 	const db = getDb();
 	const hostMode = isHost(room, user);
+	const aiHostMode = isAiHostEnabled(room);
 	const offlineSeconds = Number(config.ROOM_MEMBER_OFFLINE_SECONDS) || 35;
 	const historyLimit = Number(config.ROOM_MAX_HISTORY) || 200;
 
@@ -235,9 +334,15 @@ function mapRoomState(room, user) {
 		db.prepare(`UPDATE room_members SET last_seen_at=${nowSqlExpr()} WHERE room_id=? AND user_id=?`).run(room.id, user.id);
 	}
 
-	const host = room.host_user_id
-		? db.prepare(`SELECT id, username FROM users WHERE id=?`).get(room.host_user_id)
-		: null;
+	const host = aiHostMode
+		? { id: null, username: "AI主持人", isAi: true }
+		: (room.host_user_id
+			? db.prepare(`SELECT id, username FROM users WHERE id=?`).get(room.host_user_id)
+			: null);
+
+	const viewerBottomReveal = !!(aiHostMode && user && db.prepare(`
+		SELECT 1 FROM room_bottom_reveals WHERE room_id=? AND user_id=?
+	`).get(room.id, user.id));
 
 	const members = db.prepare(`
 		SELECT u.id, u.username, rm.role, rm.last_seen_at,
@@ -275,7 +380,7 @@ function mapRoomState(room, user) {
 				hasHostManual: !!row.has_host_manual,
 				tags: String(row.tag_names || "").split("、").filter(Boolean),
 			};
-			if (hostMode || room.status === "finished") soup.bottom = row.bottom;
+			if (hostMode || room.status === "finished" || viewerBottomReveal) soup.bottom = row.bottom;
 			if (hostMode && row.has_host_manual) soup.hostManual = row.host_manual || "";
 		}
 	}
@@ -325,21 +430,25 @@ function mapRoomState(room, user) {
 		ORDER BY id DESC
 	`).all();
 
+	const finishVote = aiHostMode ? getFinishVoteState(db, room.id) : null;
+
 	return {
 		room: {
 			code: room.code,
 			status: room.status,
 			hostUserId: room.host_user_id || null,
 			soupId: room.soup_id || null,
+			aiHostEnabled: aiHostMode,
 		},
 		limits: {
 			maxMembers: Number(config.ROOM_MAX_MEMBERS) || 12,
 			maxActiveRooms: Number(config.ROOM_MAX_ACTIVE) || 5,
 			maxHintImages: Number(config.ROOM_HINT_MAX_IMAGES) || 5,
 		},
-		viewer: user ? { id: user.id, username: user.username, isHost: hostMode } : null,
+		viewer: user ? { id: user.id, username: user.username, isHost: hostMode, hasRevealedBottom: viewerBottomReveal } : null,
 		host,
 		members,
+		finishVote,
 		soup,
 		events,
 		questions,
@@ -362,9 +471,9 @@ function renderRoomIndex(req, res) {
 
 	const rooms = db.prepare(`
 		SELECT
-			r.id, r.code, r.status, r.host_user_id, r.soup_id,
+			r.id, r.code, r.status, r.host_user_id, r.soup_id, r.ai_host_enabled,
 			r.created_at, r.updated_at, r.last_activity_at,
-			h.username AS host_name,
+			CASE WHEN COALESCE(r.ai_host_enabled,0)=1 THEN 'AI主持人' ELSE h.username END AS host_name,
 			s.title AS soup_title,
 			(
 				SELECT COUNT(1)
@@ -492,6 +601,9 @@ function sitHost(req, res) {
 	if (!room) return;
 	const user = req.session.user;
 	const db = getDb();
+	if (isAiHostEnabled(room)) {
+		return res.status(400).json({ message: "AI主持人正在主持本局，不能再坐主持人位" });
+	}
 	if (room.host_user_id && Number(room.host_user_id) !== Number(user.id)) {
 		return res.status(400).json({ message: "主持人位已经有人啦" });
 	}
@@ -544,10 +656,17 @@ function presence(req, res) {
 function searchSoups(req, res) {
 	const room = requireRoom(req, res);
 	if (!room) return;
-	if (!requireHost(req, res, room)) return;
 
 	const db = getDb();
 	const user = req.session.user;
+	const mode = String(req.query.mode || "human");
+	if (mode === "ai") {
+		if (!canUseAiHostPicker(room, user)) {
+			return res.status(403).json({ message: "当前房间不能切换为 AI 主持人" });
+		}
+	} else if (!requireHost(req, res, room)) {
+		return;
+	}
 	const q = String(req.query.q || "").trim();
 	const tagsParam = String(req.query.tags || "").trim();
 	const tagIds = tagsParam ? tagsParam.split(",").map((x) => Number(x)).filter(Number.isFinite) : [];
@@ -556,8 +675,13 @@ function searchSoups(req, res) {
 	let where = `WHERE ((s.visibility='public' AND s.status='approved') OR s.author_id=?)`;
 	const params = [user.id];
 	if (q) {
-		where += ` AND (s.title LIKE ? OR s.surface LIKE ?)`;
-		params.push(`%${q}%`, `%${q}%`);
+		where += ` AND (
+			s.title LIKE ?
+			OR s.surface LIKE ?
+			OR (CASE WHEN s.is_anonymous=1 THEN '匿名' ELSE COALESCE(u.username, '') END) LIKE ?
+		)`;
+		const likeQ = `%${q}%`;
+		params.push(likeQ, likeQ, likeQ);
 	}
 	if (tagIds.length > 0) {
 		where += ` AND EXISTS (SELECT 1 FROM soup_tags st WHERE st.soup_id=s.id AND st.tag_id IN (${tagIds.map(() => "?").join(",")}))`;
@@ -599,24 +723,70 @@ function startSoup(req, res) {
 	const tx = db.transaction(() => {
 		db.prepare(`DELETE FROM room_events WHERE room_id=?`).run(room.id);
 		db.prepare(`DELETE FROM room_questions WHERE room_id=?`).run(room.id);
-		db.prepare(`UPDATE rooms SET soup_id=?, status='playing', updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(soupId, room.id);
+		db.prepare(`DELETE FROM room_bottom_reveals WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_finish_votes WHERE room_id=?`).run(room.id);
+		db.prepare(`UPDATE rooms SET soup_id=?, status='playing', ai_host_enabled=0, updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(soupId, room.id);
 		addEvent(db, room.id, req.session.user.id, "start", { content: `开汤：《${soup.title}》` });
 	});
 	tx();
 	return res.json({ ok: true });
 }
 
-function postQuestion(req, res) {
+function startAiSoup(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	const db = getDb();
+	const user = req.session.user;
+	if (!canUseAiHostPicker(room, user)) {
+		return res.status(403).json({ message: "当前房间不能切换为 AI 主持人" });
+	}
+	const soupId = Number(req.body.soupId);
+	if (!Number.isFinite(soupId)) return res.status(400).json({ message: "请选择海龟汤" });
+	const soup = db.prepare(`SELECT * FROM soups WHERE id=? AND ((visibility='public' AND status='approved') OR author_id=?)`).get(soupId, user.id);
+	if (!soup) return res.status(404).json({ message: "海龟汤不存在或不可开汤" });
+
+	const tx = db.transaction(() => {
+		db.prepare(`DELETE FROM room_events WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_questions WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_bottom_reveals WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_finish_votes WHERE room_id=?`).run(room.id);
+		db.prepare(`UPDATE room_members SET role='viewer' WHERE room_id=?`).run(room.id);
+		db.prepare(`
+			UPDATE rooms
+			SET soup_id=?, status='playing', host_user_id=NULL, ai_host_enabled=1, updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()}
+			WHERE id=?
+		`).run(soupId, room.id);
+		addEvent(db, room.id, user.id, "start", { content: `${user.username} 使用 AI 主持人开汤：《${soup.title}》` });
+		addEvent(db, room.id, null, "system", { content: AI_HOST_TIP });
+	});
+	tx();
+	return res.json({ ok: true });
+}
+
+async function postQuestion(req, res) {
 	const room = requireRoom(req, res);
 	if (!room) return;
 	const user = req.session.user;
 	const db = getDb();
+	db.prepare(`UPDATE room_members SET last_seen_at=${nowSqlExpr()} WHERE room_id=? AND user_id=?`).run(room.id, user.id);
 	const content = String(req.body.content || "").trim();
 	if (room.status !== "playing") return res.status(400).json({ message: "开汤后才能提问" });
 	if (!content) return res.status(400).json({ message: "问题不能为空" });
 	if (content.length > 200) return res.status(400).json({ message: "问题最多 200 字" });
 	const info = db.prepare(`INSERT INTO room_questions (room_id, user_id, content) VALUES (?, ?, ?)`).run(room.id, user.id, content);
 	addEvent(db, room.id, user.id, "question", { content, questionId: info.lastInsertRowid });
+
+	if (isAiHostEnabled(room)) {
+		const question = db.prepare(`SELECT * FROM room_questions WHERE id=? AND room_id=?`).get(info.lastInsertRowid, room.id);
+		try {
+			await answerRoomQuestionWithAi(db, room, question);
+		} catch (error) {
+			console.error("[room-ai-host]", error.message);
+			addEvent(db, room.id, null, "system", { content: `AI主持人暂时无法回答「${content}」，请稍后再问一次或换个问法。` });
+			return res.status(error.statusCode || 502).json({ message: error.statusCode ? error.message : "AI主持人暂时无法回答，请稍后重试" });
+		}
+	}
+
 	return res.json({ ok: true });
 }
 
@@ -627,7 +797,7 @@ function answerQuestion(req, res) {
 	const db = getDb();
 	const questionId = Number(req.body.questionId);
 	const answer = String(req.body.answer || "").trim();
-	if (!ANSWER_VALUES.has(answer)) return res.status(400).json({ message: "回答只能是：是、否、是也不是、无关" });
+	if (!ANSWER_VALUES.has(answer)) return res.status(400).json({ message: "回答只能是：是、否、部分是、无关" });
 	const q = db.prepare(`SELECT * FROM room_questions WHERE id=? AND room_id=?`).get(questionId, room.id);
 	if (!q) return res.status(404).json({ message: "问题不存在" });
 	db.prepare(`
@@ -722,6 +892,74 @@ function postSticker(req, res) {
 	return res.json({ ok: true });
 }
 
+function revealAiBottom(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	const user = req.session.user;
+	const db = getDb();
+	db.prepare(`UPDATE room_members SET last_seen_at=${nowSqlExpr()} WHERE room_id=? AND user_id=?`).run(room.id, user.id);
+	if (!isAiHostEnabled(room) || room.status !== "playing" || !room.soup_id) {
+		return res.status(400).json({ message: "当前房间不是 AI 主持人模式" });
+	}
+	const soup = db.prepare(`SELECT id, bottom FROM soups WHERE id=?`).get(room.soup_id);
+	if (!soup) return res.status(404).json({ message: "海龟汤不存在" });
+	const existed = db.prepare(`SELECT 1 FROM room_bottom_reveals WHERE room_id=? AND user_id=?`).get(room.id, user.id);
+	db.prepare(`
+		INSERT OR IGNORE INTO room_bottom_reveals (room_id, user_id)
+		VALUES (?, ?)
+	`).run(room.id, user.id);
+	if (!existed) addEvent(db, room.id, user.id, "reveal", { content: `${user.username}查看了汤底` });
+	return res.json({ ok: true, bottom: soup.bottom });
+}
+
+function voteFinishAiRoom(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	const user = req.session.user;
+	const db = getDb();
+	db.prepare(`UPDATE room_members SET last_seen_at=${nowSqlExpr()} WHERE room_id=? AND user_id=?`).run(room.id, user.id);
+	if (!isAiHostEnabled(room) || room.status !== "playing" || !room.soup_id) {
+		return res.status(400).json({ message: "当前房间不是 AI 主持人模式" });
+	}
+	const vote = String(req.body.vote || "yes").trim() === "no" ? "no" : "yes";
+	db.prepare(`
+		INSERT INTO room_finish_votes (room_id, user_id, vote)
+		VALUES (?, ?, ?)
+		ON CONFLICT(room_id, user_id) DO UPDATE SET vote=excluded.vote, updated_at=${nowSqlExpr()}
+	`).run(room.id, user.id, vote);
+
+	const voteState = getFinishVoteState(db, room.id);
+	if (voteState.passed) {
+		db.prepare(`UPDATE rooms SET status='finished', updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(room.id);
+		addEvent(db, room.id, null, "finish", { content: `完结撒花投票通过（${voteState.yesCount}/${voteState.onlineCount}），汤底已公开` });
+		return res.json({ ok: true, finished: true, vote: voteState });
+	}
+
+	addEvent(db, room.id, user.id, "vote", {
+		content: `${user.username}${vote === "yes" ? "同意" : "暂不同意"}完结撒花（当前 ${voteState.yesCount}/${voteState.onlineCount}，需超过半数）`,
+	});
+	return res.json({ ok: true, finished: false, vote: voteState });
+}
+
+function resetAiRoom(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	const db = getDb();
+	if (!isAiHostEnabled(room) || room.status !== "finished") {
+		return res.status(400).json({ message: "只有 AI 主持人完结后才能结束本局" });
+	}
+	const tx = db.transaction(() => {
+		db.prepare(`DELETE FROM room_events WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_questions WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_bottom_reveals WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_finish_votes WHERE room_id=?`).run(room.id);
+		db.prepare(`UPDATE room_members SET role='viewer' WHERE room_id=?`).run(room.id);
+		db.prepare(`UPDATE rooms SET soup_id=NULL, status='waiting', host_user_id=NULL, ai_host_enabled=0, updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(room.id);
+	});
+	tx();
+	return res.json({ ok: true });
+}
+
 function finishSoup(req, res) {
 	const room = requireRoom(req, res);
 	if (!room) return;
@@ -741,7 +979,9 @@ function resetRoom(req, res) {
 	const tx = db.transaction(() => {
 		db.prepare(`DELETE FROM room_events WHERE room_id=?`).run(room.id);
 		db.prepare(`DELETE FROM room_questions WHERE room_id=?`).run(room.id);
-		db.prepare(`UPDATE rooms SET soup_id=NULL, status='waiting', updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_bottom_reveals WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_finish_votes WHERE room_id=?`).run(room.id);
+		db.prepare(`UPDATE rooms SET soup_id=NULL, status='waiting', ai_host_enabled=0, updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(room.id);
 		addEvent(db, room.id, req.session.user.id, "reset", { content: "主持人结束了本局，待主持人选汤ing" });
 	});
 	tx();
@@ -759,12 +999,16 @@ module.exports = {
 	presence,
 	searchSoups,
 	startSoup,
+	startAiSoup,
 	postQuestion,
 	answerQuestion,
 	deleteHistoryEvent,
 	postHint,
 	postChat,
 	postSticker,
+	revealAiBottom,
+	voteFinishAiRoom,
+	resetAiRoom,
 	finishSoup,
 	resetRoom,
 };

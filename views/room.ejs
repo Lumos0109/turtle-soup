@@ -58,7 +58,6 @@
 								<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
 							</button>
 							<div id="featureMenu" class="hidden absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2 shadow-[0_18px_45px_rgba(0,0,0,0.18)]">
-								<button id="openSoupPickerBtn" type="button" class="room-menu-item host-only">选择海龟汤</button>
 								<button id="openHintModalBtn" type="button" class="room-menu-item host-only">主持人提示</button>
 								<button id="openBottomModalBtn" type="button" class="room-menu-item host-only">查看汤底</button>
 								<button id="openManualModalBtn" type="button" class="room-menu-item host-only">查看主持人手册</button>
@@ -70,8 +69,15 @@
 					</div>
 				</div>
 
-				<div id="soupWaiting" class="mt-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center font-mono text-neutral-400">
-					待主持人选汤ing
+				<div id="soupWaiting" class="mt-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center font-mono text-neutral-500">
+					<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
+						<span id="soupWaitingText">待主持人选汤ing</span>
+						<div id="soupWaitingActions" class="flex flex-wrap items-center justify-center gap-2">
+							<button id="becomeHostBtn" class="hidden rounded-full border border-neutral-300 bg-white px-4 py-2 text-xs text-black transition hover:border-black hover:bg-black hover:text-white" type="button">成为主持人</button>
+							<button id="chooseSoupInlineBtn" class="hidden rounded-full border border-black bg-black px-4 py-2 text-xs text-white transition hover:bg-white hover:text-black" type="button">选择海龟汤</button>
+							<button id="useAiHostBtn" class="hidden rounded-full border border-black bg-white px-4 py-2 text-xs text-black transition hover:bg-black hover:text-white" type="button">使用AI主持人</button>
+						</div>
+					</div>
 				</div>
 
 				<div id="soupPlaying" class="hidden mt-4 space-y-4">
@@ -97,6 +103,7 @@
 				<div class="mb-3 flex items-center justify-between gap-3">
 					<h3 class="font-serif text-xl font-bold">讨论区</h3>
 					<div class="flex items-center gap-2">
+						<button id="aiRevealBottomBtn" class="hidden rounded-full border border-neutral-300 bg-white px-3 py-2 font-mono text-xs hover:border-black hover:bg-black hover:text-white" type="button">查看汤底</button>
 						<button id="openQuestionModalBtn" class="room-icon-btn room-tooltip" data-tip="提问" type="button" aria-label="提问">
 							<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
 						</button>
@@ -173,7 +180,7 @@
 					<button class="room-filter-chip" data-history-filter="pending" type="button">待回答</button>
 					<button class="room-filter-chip" data-history-filter="yes" type="button">是</button>
 					<button class="room-filter-chip" data-history-filter="no" type="button">否</button>
-					<button class="room-filter-chip" data-history-filter="partial" type="button">是也不是</button>
+					<button class="room-filter-chip" data-history-filter="partial" type="button">部分是</button>
 					<button class="room-filter-chip" data-history-filter="irrelevant" type="button">无关</button>
 					<button class="room-filter-chip" data-history-filter="hint" type="button">提示</button>
 				</div>
@@ -194,7 +201,7 @@
 			<div class="grid grid-cols-2 gap-2 font-mono text-xs">
 				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="yes" type="button">是</button>
 				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="no" type="button">否</button>
-				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="partial" type="button">是也不是</button>
+				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="partial" type="button">部分是</button>
 				<button class="edit-answer-choice rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:border-black" data-answer="irrelevant" type="button">无关</button>
 			</div>
 		</div>
@@ -241,14 +248,14 @@
 		<div class="mobile-modal-panel flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
 			<div class="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
 				<div>
-					<div class="font-serif text-xl font-bold">选择要玩的海龟汤</div>
-					<div class="mt-1 font-mono text-xs text-neutral-500">可模糊搜索、标签筛选、热度/评分排序</div>
+					<div id="soupPickerTitle" class="font-serif text-xl font-bold">选择要玩的海龟汤</div>
+					<div id="soupPickerSubtitle" class="mt-1 font-mono text-xs text-neutral-500">可模糊搜索、标签筛选、热度/评分排序</div>
 				</div>
 				<button id="closeSoupPickerBtn" class="p-1 text-2xl leading-none" type="button" aria-label="关闭">×</button>
 			</div>
 			<div class="space-y-3 p-5">
 				<div class="flex flex-col gap-2 sm:flex-row">
-					<input id="pickerQ" class="min-w-0 flex-1 rounded-full border-2 border-black px-4 py-2 outline-none" placeholder="搜索海龟汤…" />
+					<input id="pickerQ" class="min-w-0 flex-1 rounded-full border-2 border-black px-4 py-2 outline-none" placeholder="搜索标题 / 汤面 / 作者…" />
 					<select id="pickerSort" class="rounded-full border border-neutral-300 px-3 py-2 font-mono text-xs">
 						<option value="">默认</option>
 						<option value="hot_desc">热度↓</option>
@@ -268,6 +275,22 @@
 				</div>
 			</div>
 			<div id="pickerResults" class="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-5 custom-scrollbar"></div>
+		</div>
+	</div>
+
+	<div id="finishVoteModal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 px-4">
+		<div class="mobile-modal-panel w-full max-w-md rounded-2xl bg-white p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+			<div class="mb-4 flex items-start justify-between gap-3">
+				<div>
+					<div class="font-serif text-xl font-bold">是否完结撒花？</div>
+					<div id="finishVoteStatus" class="mt-1 font-mono text-xs text-neutral-500">超过半数玩家选择“是”后，本局会完结并公开汤底。</div>
+				</div>
+				<button class="close-modal p-1 text-2xl leading-none" data-close-modal="finishVoteModal" type="button" aria-label="关闭">×</button>
+			</div>
+			<div class="flex justify-end gap-2">
+				<button id="voteFinishNoBtn" class="rounded-full border border-neutral-300 bg-white px-4 py-2 font-mono text-xs hover:border-black" type="button">否，继续推理</button>
+				<button id="voteFinishYesBtn" class="rounded-full bg-black px-4 py-2 font-mono text-xs text-white" type="button">是，完结撒花</button>
+			</div>
 		</div>
 	</div>
 
@@ -319,7 +342,7 @@
 		.room-sticker-choice:hover { border-color: black; background: white; transform: translateY(-1px); }
 	</style>
 
-	<script defer src="/js/room.js"></script>
+	<script defer src="/js/room.js?v=ai-host-chat-visible-20260604-2"></script>
 </body>
 
 </html>

@@ -79,7 +79,7 @@
 
         <form method="get" action="/admin" class="flex items-center gap-2 mb-6">
           <input type="hidden" name="tab" value="publicSoups" />
-          <input name="qSoup" value="<%= qSoup || '' %>" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="搜索标题 / 汤面" />
+          <input name="qSoup" value="<%= qSoup || '' %>" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="搜索标题 / 汤面 / 作者" />
           <button type="submit" class="btn-sketch-primary h-12 px-6">搜索</button>
         </form>
 
@@ -211,7 +211,7 @@
 
         <form method="get" action="/admin" class="flex items-center gap-2 mb-6">
           <input type="hidden" name="tab" value="rooms" />
-          <input name="qRoom" value="<%= qRoom || '' %>" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="搜索房间号 / 主持人 / 海龟汤标题" />
+          <input name="qRoom" value="<%= qRoom || '' %>" class="h-12 flex-1 border-2 border-black px-3 outline-none" placeholder="搜索房间号 / 主持人 / 海龟汤标题 / 汤作者" />
           <button type="submit" class="btn-sketch-primary h-12 px-6">搜索</button>
         </form>
 

@@ -295,6 +295,12 @@
 					</button>
 				</form>
 			<% } else { %>
+				<a href="/admin/login" class="inline-flex items-center font-mono text-[11px] text-neutral-500 hover:text-black" aria-label="管理员登录">
+					<svg class="mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+					</svg>
+					ADMIN
+				</a>
 				<a href="/auth/login" class="btn-sketch-primary px-3 py-2 text-xs">登录</a>
 			<% } %>
 		</div>
@@ -306,6 +312,7 @@
 			<div class="flex min-w-max items-center gap-2">
 				<button type="button" data-site-support-trigger class="mobile-nav-chip" aria-expanded="false">交流与支持</button>
 				<a href="/rooms" target="_blank" rel="noopener" class="mobile-nav-chip">去开房间</a>
+
 
 				<% if (currentUser) { %>
 					<a href="/soups/create" class="mobile-nav-chip">新建海龟汤</a>

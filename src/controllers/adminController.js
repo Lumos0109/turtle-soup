@@ -25,9 +25,9 @@ function renderAdmin(req, res) {
 		LEFT JOIN users u ON u.id=s.author_id
 		WHERE s.visibility='public'
 			AND s.status='approved'
-			AND (?='' OR s.title LIKE ? OR s.surface LIKE ?)
+			AND (?='' OR s.title LIKE ? OR s.surface LIKE ? OR COALESCE(u.username, 'Unknown') LIKE ?)
 		ORDER BY s.id DESC
-	`).all(qSoup, `%${qSoup}%`, `%${qSoup}%`);
+	`).all(qSoup, `%${qSoup}%`, `%${qSoup}%`, `%${qSoup}%`);
 
 	const tags = db.prepare(`
 		SELECT id, name, COALESCE(sort_order, id) AS sort_order, COALESCE(is_hidden, 0) AS is_hidden
@@ -71,13 +71,14 @@ function renderAdmin(req, res) {
 		FROM rooms r
 		LEFT JOIN users h ON h.id=r.host_user_id
 		LEFT JOIN soups s ON s.id=r.soup_id
-		WHERE (?='' OR r.code LIKE ? OR h.username LIKE ? OR s.title LIKE ?)
+		LEFT JOIN users su ON su.id=s.author_id
+		WHERE (?='' OR r.code LIKE ? OR h.username LIKE ? OR s.title LIKE ? OR COALESCE(su.username, '') LIKE ?)
 		ORDER BY
 			CASE r.status WHEN 'closed' THEN 1 ELSE 0 END,
 			datetime(r.last_activity_at) DESC,
 			r.id DESC
 		LIMIT 80
-	`).all(qRoom, `%${qRoom}%`, `%${qRoom}%`, `%${qRoom}%`).map((room) => ({
+	`).all(qRoom, `%${qRoom}%`, `%${qRoom}%`, `%${qRoom}%`, `%${qRoom}%`).map((room) => ({
 		...room,
 		online_count: Number(room.online_count || 0),
 		statusText: room.status === "playing" ? "游玩中" : room.status === "finished" ? "已完结" : room.status === "closed" ? "已关闭" : "待开汤",

@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+	const ROOM_JS_VERSION = "ai-host-chat-visible-20260604-2";
+	console.info("[room.js] loaded", ROOM_JS_VERSION);
 	const main = document.querySelector("main[data-room-code]");
 	if (!main) return;
 	const roomCode = main.dataset.roomCode;
@@ -68,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	let lastChatSignature = "";
 	let lastStickerSignature = "";
 	let editingQuestionId = null;
+	let pickerMode = "human";
 
 	const $ = (id) => document.getElementById(id);
 	const toastEl = $("roomToast");
@@ -93,8 +96,32 @@ document.addEventListener("DOMContentLoaded", () => {
 			.replaceAll("'", "&#039;");
 	}
 
+	function getEventList() {
+		return Array.isArray(state?.events) ? state.events : [];
+	}
+
+	function getQuestionFallbackEvents() {
+		const questions = Array.isArray(state?.questions) ? state.questions : [];
+		return questions.map((q) => ({
+			id: `q-${q.id}`,
+			type: "question",
+			username: q.username || "Unknown",
+			content: q.content || "",
+			questionId: q.id,
+			answer: q.answer || null,
+			images: [],
+			createdAt: q.createdAt || "",
+		}));
+	}
+
+	function getChatEventList() {
+		const events = getEventList();
+		if (events.length > 0) return events;
+		return getQuestionFallbackEvents();
+	}
+
 	function eventsSignature(events) {
-		return (events || []).map((e) => [
+		return (Array.isArray(events) ? events : []).map((e) => [
 			e.id,
 			e.type,
 			e.questionId || "",
@@ -167,7 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (!answer) return { text: "待回答", icon: iconSvg("pending"), cls: "room-answer-pending" };
 		if (answer === "yes") return { text: "是", icon: iconSvg("yes"), cls: "room-answer-yes" };
 		if (answer === "no") return { text: "否", icon: iconSvg("no"), cls: "room-answer-no" };
-		if (answer === "partial") return { text: "是也不是", icon: iconSvg("partial"), cls: "room-answer-partial" };
+		if (answer === "partial") return { text: "部分是", icon: iconSvg("partial"), cls: "room-answer-partial" };
 		return { text: "无关", icon: iconSvg("irrelevant"), cls: "room-answer-irrelevant" };
 	}
 
@@ -182,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	}
 
 	function answerButtons(questionId, currentAnswer = null) {
-		if (!state?.viewer?.isHost) return "";
+		if (!state?.viewer?.isHost || state?.room?.aiHostEnabled) return "";
 		const btn = (answer, text) => {
 			const active = currentAnswer === answer ? "border-black bg-black text-white" : "border bg-white/60 hover:border-black";
 			return `<button class="room-answer-btn rounded-full px-2 py-1 ${active}" data-question-id="${questionId}" data-answer="${answer}" type="button">${text}</button>`;
@@ -191,13 +218,13 @@ document.addEventListener("DOMContentLoaded", () => {
 			<div class="mt-2 flex flex-wrap gap-1 font-mono text-xs">
 				${btn("yes", "是")}
 				${btn("no", "否")}
-				${btn("partial", "是也不是")}
+				${btn("partial", "部分是")}
 				${btn("irrelevant", "无关")}
 			</div>`;
 	}
 
 	function historyHostActions(event) {
-		if (!state?.viewer?.isHost) return "";
+		if (!state?.viewer?.isHost || state?.room?.aiHostEnabled) return "";
 		const edit = event.type === "question"
 			? `<button class="room-edit-answer-btn rounded-full border border-neutral-300 bg-white/70 px-2 py-1 hover:border-black" data-question-id="${event.questionId}" data-question-content="${esc(event.content)}" type="button">修改回答</button>`
 			: "";
@@ -211,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	function renderHistory() {
 		const list = $("historyList");
 		if (!list || !state) return;
-		const items = state.events.filter(shouldShowHistoryEvent);
+		const items = getChatEventList().filter(shouldShowHistoryEvent);
 		const sig = `${historyFilter}|host=${state.viewer?.isHost ? 1 : 0}|${eventsSignature(items)}`;
 		if (sig === lastHistorySignature) return;
 		lastHistorySignature = sig;
@@ -242,15 +269,15 @@ document.addEventListener("DOMContentLoaded", () => {
 		const list = $("chatList");
 		if (!list || !state) return;
 		const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 40;
-		const events = state.events;
-		const sig = `host=${state.viewer?.isHost ? 1 : 0}|${eventsSignature(events)}`;
+		const events = getChatEventList();
+		const sig = `host=${state.viewer?.isHost ? 1 : 0}|ai=${state.room?.aiHostEnabled ? 1 : 0}|status=${state.room?.status || ""}|${eventsSignature(events)}`;
 		if (sig === lastChatSignature) return;
-		lastChatSignature = sig;
 		if (events.length === 0) {
 			list.innerHTML = `<div class="py-10 text-center font-mono text-xs text-neutral-400">还没有讨论内容</div>`;
+			lastChatSignature = sig;
 			return;
 		}
-		list.innerHTML = events.map((e) => {
+		const html = events.map((e) => {
 			let label = "系统";
 			let cls = "border-neutral-200 bg-white";
 			if (e.type === "join") label = "进入";
@@ -277,18 +304,34 @@ document.addEventListener("DOMContentLoaded", () => {
 			if (e.type === "start") label = "开汤";
 			if (e.type === "finish") label = "完结";
 			if (e.type === "reset") label = "结束";
+			if (e.type === "reveal") label = "查看汤底";
+			if (e.type === "vote") label = "投票";
 			const images = (e.images || []).map((src) => `<img src="${esc(src)}" class="mt-2 max-h-36 rounded-lg border border-neutral-200" alt="提示图片">`).join("");
 			const body = e.type === "sticker"
 				? `<img src="${esc(e.content)}" class="room-sticker-img mt-2" alt="表情">`
 				: `<div class="mt-1 whitespace-pre-wrap text-sm leading-relaxed">${esc(e.content)}</div>`;
+			let action = "";
+			if (e.type === "reveal" && state.room?.aiHostEnabled && state.room?.status === "playing") {
+				action = `<button class="ai-finish-vote-open shrink-0 rounded-full border border-black bg-white px-3 py-1.5 font-mono text-xs text-black hover:bg-black hover:text-white" type="button">完结撒花</button>`;
+			}
+			if (e.type === "finish" && state.room?.aiHostEnabled && state.room?.status === "finished") {
+				action = `<button class="ai-room-reset-btn shrink-0 rounded-full border border-red-200 bg-white px-3 py-1.5 font-mono text-xs text-red-600 hover:border-red-600 hover:bg-red-600 hover:text-white" type="button">结束本局</button>`;
+			}
 			return `
 				<div class="rounded-xl border p-3 ${cls}">
 					<div class="font-mono text-[11px] text-neutral-500">${esc(label)} · ${esc(e.username)} · ${esc(e.createdAt)}</div>
-					${body}
-					${images}
-					${e.type === "question" && !e.answer ? answerButtons(e.questionId) : ""}
+					<div class="mt-1 flex items-start justify-between gap-3">
+						<div class="min-w-0 flex-1">
+							${body}
+							${images}
+							${e.type === "question" && !e.answer ? answerButtons(e.questionId) : ""}
+						</div>
+						${action ? `<div class="shrink-0 pt-1">${action}</div>` : ""}
+					</div>
 				</div>`;
 		}).join("");
+		list.innerHTML = html;
+		lastChatSignature = sig;
 		if (atBottom) list.scrollTop = list.scrollHeight;
 	}
 
@@ -318,15 +361,26 @@ document.addEventListener("DOMContentLoaded", () => {
 		const isHost = !!state.viewer?.isHost;
 		if (memberCount) memberCount.textContent = `${online.length} / ${state.limits.maxMembers}`;
 		if (hostSeat) {
-			const canSitOrLeave = isHost || !state.host;
-			hostSeat.innerHTML = `
-				<div class="flex items-center justify-between gap-3">
-					<div class="min-w-0">
-						<div class="font-mono text-xs text-neutral-500">主持人位</div>
-						<div class="mt-1 truncate">${state.host ? `<span class="font-bold">${esc(state.host.username)}</span>` : `<span class="text-neutral-400">空</span>`}</div>
-					</div>
-					${canSitOrLeave ? `<button id="seatHostActionBtn" class="room-tooltip shrink-0 rounded-full border border-neutral-300 bg-white px-3 py-1.5 font-mono text-xs hover:border-black hover:bg-black hover:text-white" data-tip="${isHost ? "离开主持人位" : "坐上主持人位"}" type="button">${isHost ? "离" : "坐"}</button>` : `<span class="shrink-0 font-mono text-xs text-neutral-400">已占用</span>`}
-				</div>`;
+			if (state.room?.aiHostEnabled) {
+				hostSeat.innerHTML = `
+					<div class="flex items-center justify-between gap-3">
+						<div class="min-w-0">
+							<div class="font-mono text-xs text-neutral-500">主持人位</div>
+							<div class="mt-1 truncate"><span class="font-bold">AI主持人</span></div>
+						</div>
+						<span class="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 font-mono text-xs text-amber-700">AI托管中</span>
+					</div>`;
+			} else {
+				const canSitOrLeave = isHost || !state.host;
+				hostSeat.innerHTML = `
+					<div class="flex items-center justify-between gap-3">
+						<div class="min-w-0">
+							<div class="font-mono text-xs text-neutral-500">主持人位</div>
+							<div class="mt-1 truncate">${state.host ? `<span class="font-bold">${esc(state.host.username)}</span>` : `<span class="text-neutral-400">空</span>`}</div>
+						</div>
+						${canSitOrLeave ? `<button id="seatHostActionBtn" class="room-tooltip shrink-0 rounded-full border border-neutral-300 bg-white px-3 py-1.5 font-mono text-xs hover:border-black hover:bg-black hover:text-white" data-tip="${isHost ? "离开主持人位" : "坐上主持人位"}" type="button">${isHost ? "离" : "坐"}</button>` : `<span class="shrink-0 font-mono text-xs text-neutral-400">已占用</span>`}
+					</div>`;
+			}
 		}
 		if (memberList) {
 			memberList.innerHTML = state.members.map((m) => `
@@ -369,6 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			renderSoupTags(null);
 			waiting?.classList.remove("hidden");
 			playing?.classList.add("hidden");
+			if (bottom) bottom.textContent = "";
 			return;
 		}
 		if (title) title.textContent = soup.title;
@@ -378,7 +433,11 @@ document.addEventListener("DOMContentLoaded", () => {
 		playing?.classList.remove("hidden");
 		if (detailLink) detailLink.href = `/soups/${soup.id}`;
 
-		if (bottom) bottom.textContent = soup.bottom || "主持人可见，完结后公开";
+		if (bottom) {
+			if (soup.bottom) bottom.textContent = soup.bottom;
+			else if (state.room.aiHostEnabled && state.room.status === "playing") bottom.textContent = "点击“查看汤底”后可见。";
+			else bottom.textContent = "主持人可见，完结后公开";
+		}
 		if (manual) manual.textContent = soup.hostManual || "暂无主持人手册";
 
 		if (state.room.status === "finished") {
@@ -389,18 +448,44 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	}
 
+	function renderFinishVoteStatus() {
+		const vote = state?.finishVote;
+		const statusEl = $("finishVoteStatus");
+		if (!statusEl) return;
+		if (!vote) {
+			statusEl.textContent = "超过半数玩家选择“是”后，本局会完结并公开汤底。";
+			return;
+		}
+		statusEl.textContent = `当前 ${vote.yesCount}/${vote.onlineCount} 人同意，需 ${vote.needed} 人同意才会完结撒花。`;
+	}
+
 	function renderControls() {
 		if (!state) return;
 		const isHost = !!state.viewer?.isHost;
-		document.querySelectorAll(".host-only").forEach((el) => el.classList.toggle("hidden", !isHost));
-		$("finishSoupBtn")?.classList.toggle("hidden", !isHost || !state.room.soupId || state.room.status === "finished");
-		$("openHintModalBtn")?.classList.toggle("hidden", !isHost || state.room.status !== "playing");
-		$("openBottomModalBtn")?.classList.toggle("hidden", !isHost || !state.room.soupId);
-		$("openManualModalBtn")?.classList.toggle("hidden", !isHost || !state.room.soupId || !state.soup?.hasHostManual);
-		$("resetRoomBtn")?.classList.toggle("hidden", !isHost);
+		const aiHost = !!state.room?.aiHostEnabled;
+		const noSoupWaiting = !state.room?.soupId && state.room?.status === "waiting" && !aiHost;
+		const hasHumanHost = !!state.host && !state.host.isAi;
+		const canBecomeHost = noSoupWaiting && !hasHumanHost;
+		const canChooseInline = noSoupWaiting && hasHumanHost && isHost;
+		const canUseAi = noSoupWaiting && !hasHumanHost;
+
+		document.querySelectorAll(".host-only").forEach((el) => el.classList.toggle("hidden", !isHost || aiHost));
+		$("finishSoupBtn")?.classList.toggle("hidden", !isHost || aiHost || !state.room.soupId || state.room.status === "finished");
+		$("openHintModalBtn")?.classList.toggle("hidden", !isHost || aiHost || state.room.status !== "playing");
+		$("openBottomModalBtn")?.classList.toggle("hidden", !isHost || aiHost || !state.room.soupId);
+		$("openManualModalBtn")?.classList.toggle("hidden", !isHost || aiHost || !state.room.soupId || !state.soup?.hasHostManual);
+		$("resetRoomBtn")?.classList.toggle("hidden", !isHost || aiHost);
+
+		$("aiRevealBottomBtn")?.classList.toggle("hidden", !aiHost || !state.room.soupId || state.room.status !== "playing");
+		$("becomeHostBtn")?.classList.toggle("hidden", !canBecomeHost);
+		$("chooseSoupInlineBtn")?.classList.toggle("hidden", !canChooseInline);
+		$("useAiHostBtn")?.classList.toggle("hidden", !canUseAi);
+		if ($("soupWaitingText")) $("soupWaitingText").textContent = "待主持人选汤ing";
+
 		const hostItems = Array.from(document.querySelectorAll("#featureMenu .host-only"));
 		const anyVisible = hostItems.some((el) => !el.classList.contains("hidden"));
 		$("featureMenuEmpty")?.classList.toggle("hidden", anyVisible);
+		renderFinishVoteStatus();
 	}
 
 	function syncSurfaceToggle() {
@@ -416,19 +501,27 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	}
 
+	function safeRender(name, fn) {
+		try {
+			fn();
+		} catch (error) {
+			console.error(`[room] ${name} 渲染失败`, error);
+		}
+	}
+
 	function renderAll() {
-		renderMembers();
-		renderSoup();
-		renderControls();
-		syncSurfaceToggle();
-		renderHistory();
-		renderChat();
-		renderStickers();
+		safeRender("members", renderMembers);
+		safeRender("soup", renderSoup);
+		safeRender("controls", renderControls);
+		safeRender("surface-toggle", syncSurfaceToggle);
+		safeRender("history", renderHistory);
+		safeRender("chat", renderChat);
+		safeRender("stickers", renderStickers);
 	}
 
 	async function refreshState(silent = true) {
 		try {
-			const res = await fetch(`${api}/state`);
+			const res = await fetch(`${api}/state?_=${Date.now()}`, { cache: "no-store", headers: { "Accept": "application/json" } });
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) {
 				if (data.roomCode) {
@@ -440,6 +533,10 @@ document.addEventListener("DOMContentLoaded", () => {
 			state = data;
 			renderAll();
 		} catch (error) {
+			const list = $("chatList");
+			if (list && !silent) {
+				list.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 p-3 font-mono text-xs text-red-600">讨论区刷新失败：${esc(error.message || "未知错误")}</div>`;
+			}
 			if (!silent) toast(error.message);
 		}
 	}
@@ -511,6 +608,10 @@ document.addEventListener("DOMContentLoaded", () => {
 		else doPost(`${api}/sit-host`, {}, "你已经坐到主持人位");
 	});
 
+	$("becomeHostBtn")?.addEventListener("click", () => {
+		doPost(`${api}/sit-host`, {}, "你已经成为主持人");
+	});
+
 	$("stickerList")?.addEventListener("click", async (e) => {
 		const btn = e.target.closest(".room-sticker-choice");
 		if (!btn) return;
@@ -525,7 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		const input = $("questionInput");
 		const content = input.value.trim();
 		if (!content) return toast("问题不能为空");
-		await doPost(`${api}/question`, { content }, "已提交问题，等待主持人回答");
+		await doPost(`${api}/question`, { content }, state?.room?.aiHostEnabled ? "AI主持人已回答" : "已提交问题，等待主持人回答");
 		input.value = "";
 		closeModal("questionModal");
 	});
@@ -590,6 +691,18 @@ document.addEventListener("DOMContentLoaded", () => {
 			});
 			lastHistorySignature = "";
 			renderHistory();
+			return;
+		}
+		const aiFinishBtn = e.target.closest(".ai-finish-vote-open");
+		if (aiFinishBtn) {
+			renderFinishVoteStatus();
+			openModal("finishVoteModal");
+			return;
+		}
+		const aiResetBtn = e.target.closest(".ai-room-reset-btn");
+		if (aiResetBtn) {
+			if (!confirm("确认结束本局并回到未开汤状态吗？")) return;
+			doPost(`${api}/reset-ai`, {}, "本局已结束");
 		}
 	});
 
@@ -604,8 +717,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	// 选汤弹窗
 	const pickerModal = $("soupPickerModal");
-	function openPicker() {
+	function openPicker(mode = "human") {
+		pickerMode = mode === "ai" ? "ai" : "human";
 		$("featureMenu")?.classList.add("hidden");
+		if ($("soupPickerTitle")) $("soupPickerTitle").textContent = pickerMode === "ai" ? "选择海龟汤 · AI主持人" : "选择要玩的海龟汤";
+		if ($("soupPickerSubtitle")) $("soupPickerSubtitle").textContent = pickerMode === "ai" ? "选择后由 AI 自动回答玩家提问" : "可模糊搜索、标签筛选、热度/评分排序";
 		pickerModal?.classList.remove("hidden");
 		pickerModal?.classList.add("flex");
 		searchSoups();
@@ -614,9 +730,11 @@ document.addEventListener("DOMContentLoaded", () => {
 		pickerModal?.classList.add("hidden");
 		pickerModal?.classList.remove("flex");
 	}
-	$("openSoupPickerBtn")?.addEventListener("click", openPicker);
+	$("chooseSoupInlineBtn")?.addEventListener("click", () => openPicker("human"));
+	$("useAiHostBtn")?.addEventListener("click", () => openPicker("ai"));
 	$("closeSoupPickerBtn")?.addEventListener("click", closePicker);
 	pickerModal?.addEventListener("click", (e) => { if (e.target === pickerModal) closePicker(); });
+
 
 	function renderTagChipsFromString(tagNames) {
 		const tags = String(tagNames || "").split("、").map((x) => x.trim()).filter(Boolean);
@@ -628,7 +746,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		const q = $("pickerQ")?.value.trim() || "";
 		const sort = $("pickerSort")?.value || "";
 		const tags = Array.from(document.querySelectorAll(".pickerTag")).filter((c) => c.checked).map((c) => c.value).join(",");
-		const params = new URLSearchParams({ q, sort, tags });
+		const params = new URLSearchParams({ q, sort, tags, mode: pickerMode });
 		const resultEl = $("pickerResults");
 		resultEl.innerHTML = `<div class="py-8 text-center font-mono text-xs text-neutral-400">搜索中…</div>`;
 		try {
@@ -648,7 +766,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							<div class="mt-1 line-clamp-2 text-sm text-neutral-600">${esc(s.surface)}</div>
 							<div class="mt-2 font-mono text-xs text-neutral-400">作者：${esc(s.author_name)} · ❤ ${Number(s.like_count || 0)} · ${s.rating_count ? `★ ${Number(s.rating_avg || 0).toFixed(1)}` : "暂无评分"}</div>
 						</div>
-						<button class="picker-start-btn btn-sketch-primary shrink-0" data-soup-id="${s.id}" type="button">开汤</button>
+						<button class="picker-start-btn btn-sketch-primary shrink-0" data-soup-id="${s.id}" type="button">${pickerMode === "ai" ? "AI开汤" : "开汤"}</button>
 					</div>
 				</div>`).join("");
 		} catch (error) {
@@ -662,11 +780,37 @@ document.addEventListener("DOMContentLoaded", () => {
 	$("pickerResults")?.addEventListener("click", async (e) => {
 		const btn = e.target.closest(".picker-start-btn");
 		if (!btn) return;
-		await doPost(`${api}/start`, { soupId: Number(btn.dataset.soupId) }, "开汤啦");
+		const endpoint = pickerMode === "ai" ? `${api}/start-ai` : `${api}/start`;
+		await doPost(endpoint, { soupId: Number(btn.dataset.soupId) }, pickerMode === "ai" ? "AI主持人已开汤" : "开汤啦");
 		closePicker();
 		soupSurfaceExpanded = true;
 		syncSurfaceToggle();
 	});
+
+	$("aiRevealBottomBtn")?.addEventListener("click", async () => {
+		try {
+			const data = await postJson(`${api}/reveal-bottom`, {});
+			if ($("roomSoupBottom")) $("roomSoupBottom").textContent = data.bottom || "";
+			openModal("bottomModal");
+			await refreshState();
+		} catch (error) {
+			toast(error.message);
+		}
+	});
+
+
+	async function submitFinishVote(vote) {
+		try {
+			const data = await postJson(`${api}/finish-vote`, { vote });
+			toast(data.finished ? "投票通过，汤底已公开" : "已投票，继续推理");
+			closeModal("finishVoteModal");
+			await refreshState();
+		} catch (error) {
+			toast(error.message);
+		}
+	}
+	$("voteFinishYesBtn")?.addEventListener("click", () => submitFinishVote("yes"));
+	$("voteFinishNoBtn")?.addEventListener("click", () => submitFinishVote("no"));
 
 	// 完结后互动
 	async function revealCurrentSoup() {

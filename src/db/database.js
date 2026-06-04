@@ -224,6 +224,7 @@ function createTables() {
 			host_user_id INTEGER,
 			soup_id INTEGER,
 			status TEXT NOT NULL DEFAULT 'waiting',
+			ai_host_enabled INTEGER NOT NULL DEFAULT 0,
 			created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
 			updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
 			last_activity_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
@@ -281,6 +282,26 @@ function createTables() {
 			is_deleted INTEGER NOT NULL DEFAULT 0,
 			created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 		);`,
+
+		`CREATE TABLE IF NOT EXISTS room_bottom_reveals (
+			room_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+			PRIMARY KEY (room_id, user_id),
+			FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+
+		`CREATE TABLE IF NOT EXISTS room_finish_votes (
+			room_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			vote TEXT NOT NULL DEFAULT 'yes',
+			created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+			PRIMARY KEY (room_id, user_id),
+			FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
 	]);
 }
 
@@ -297,6 +318,7 @@ function migrate() {
 	ensureColumn("comments", "is_deleted", "INTEGER NOT NULL DEFAULT 0");
 	ensureColumn("comments", "is_pinned", "INTEGER NOT NULL DEFAULT 0");
 	ensureColumn("comments", "pinned_at", "TEXT");
+	ensureColumn("rooms", "ai_host_enabled", "INTEGER NOT NULL DEFAULT 0");
 	ensureColumn("room_events", "images_json", "TEXT");
 	ensureColumn("room_stickers", "original_name", "TEXT");
 	ensureColumn("room_stickers", "is_deleted", "INTEGER NOT NULL DEFAULT 0");
@@ -315,6 +337,8 @@ function migrate() {
 		"CREATE INDEX IF NOT EXISTS idx_room_questions_room ON room_questions(room_id, id);",
 		"CREATE INDEX IF NOT EXISTS idx_room_events_room_id ON room_events(room_id, id);",
 		"CREATE INDEX IF NOT EXISTS idx_room_stickers_active ON room_stickers(is_deleted, id);",
+		"CREATE INDEX IF NOT EXISTS idx_room_bottom_reveals_room ON room_bottom_reveals(room_id, user_id);",
+		"CREATE INDEX IF NOT EXISTS idx_room_finish_votes_room ON room_finish_votes(room_id, vote);",
 	]);
 
 	getDb().prepare(`UPDATE tags SET sort_order=id WHERE sort_order IS NULL OR sort_order=0`).run();

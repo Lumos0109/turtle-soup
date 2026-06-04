@@ -32,8 +32,13 @@ function renderHome(req, res) {
 	const params = [];
 
 	if (q) {
-		where += ` AND (s.title LIKE ? OR s.surface LIKE ?)`;
-		params.push(`%${q}%`, `%${q}%`);
+		where += ` AND (
+			s.title LIKE ?
+			OR s.surface LIKE ?
+			OR (CASE WHEN s.is_anonymous=1 THEN '匿名' ELSE COALESCE(u.username, '') END) LIKE ?
+		)`;
+		const likeQ = `%${q}%`;
+		params.push(likeQ, likeQ, likeQ);
 	}
 
 	if (tagIds.length > 0) {
