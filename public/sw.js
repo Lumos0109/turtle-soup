@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hgt-shell-v6-20260611-soup-favorite';
+const CACHE_NAME = 'hgt-shell-v8-20260611-room-mobile-float-restore';
 const STATIC_ASSETS = [
   '/favicon.svg',
   '/manifest.webmanifest'

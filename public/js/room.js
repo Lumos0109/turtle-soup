@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-	const ROOM_JS_VERSION = "mention-home-return-20260611";
+	const ROOM_JS_VERSION = "room-mobile-chat-safe-20260611";
 	console.info("[room.js] loaded", ROOM_JS_VERSION);
 	const main = document.querySelector("main[data-room-code]");
 	if (!main) return;
@@ -412,7 +412,11 @@ document.addEventListener("DOMContentLoaded", () => {
 		}).join("");
 		list.innerHTML = html;
 		lastChatSignature = sig;
-		if (atBottom) list.scrollTop = list.scrollHeight;
+		if (atBottom) {
+			requestAnimationFrame(() => {
+				list.scrollTop = list.scrollHeight;
+			});
+		}
 	}
 
 	function renderStickers() {

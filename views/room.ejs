@@ -113,7 +113,7 @@
 					</div>
 				</div>
 				<div id="chatList" class="room-chat-list h-[58vh] min-h-[420px] space-y-3 overflow-y-auto rounded-xl border border-neutral-100 bg-neutral-50 p-3 pr-1 custom-scrollbar"></div>
-				<form id="chatForm" class="room-chat-form relative mt-3 flex gap-2">
+				<form id="chatForm" class="room-chat-form mt-3 flex gap-2">
 					<div id="roomMentionPanel" class="room-mention-panel hidden"></div>
 					<button id="openStickerModalBtn" class="room-icon-btn room-tooltip shrink-0" data-tip="发表情" type="button" aria-label="发表情">
 						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
@@ -342,13 +342,33 @@
 		.room-sticker-choice { display: inline-flex; align-items: center; justify-content: center; width: 5.75rem; height: 5.75rem; border: 1px solid rgb(229 229 229); border-radius: 1rem; background: rgb(250 250 250); transition: all 150ms ease; }
 		.room-sticker-choice:hover { border-color: black; background: white; transform: translateY(-1px); }
 		.room-mention-panel { position: absolute; left: 3.25rem; right: 3.25rem; bottom: calc(100% + .45rem); z-index: 80; max-height: 14rem; overflow-y: auto; border: 1px solid rgb(212 212 212); border-radius: 1rem; background: rgba(255,255,255,.98); padding: .35rem; box-shadow: 0 16px 40px rgba(0,0,0,.18); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+		@media (max-width: 640px) {
+			/* 兜底修复：@ 提醒功能加过 relative class 后，部分浏览器会把聊天输入栏从 sticky 覆盖成普通定位。 */
+			.room-chat-form {
+				position: sticky !important;
+				bottom: calc(4.25rem + env(safe-area-inset-bottom) + var(--keyboard-inset, 0px)) !important;
+				z-index: 60 !important;
+				align-items: center;
+				width: 100%;
+				max-width: 100%;
+				border-radius: 9999px;
+				background: rgba(255,255,255,.98);
+				padding: .35rem;
+				box-shadow: 0 -8px 24px rgba(0,0,0,.10);
+				backdrop-filter: blur(8px);
+				-webkit-backdrop-filter: blur(8px);
+			}
+			body.mobile-keyboard-active .room-chat-form {
+				bottom: calc(1.25rem + env(safe-area-inset-bottom) + var(--keyboard-inset, 0px)) !important;
+			}
+		}
 		.room-mention-option { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .75rem; border-radius: .75rem; padding: .55rem .7rem; text-align: left; font-size: .875rem; color: rgb(23 23 23); }
 		.room-mention-option:hover, .room-mention-option.is-active { background: rgb(23 23 23); color: white; }
 		.room-mention-role { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: .68rem; opacity: .65; }
 		@media (max-width: 640px) { .room-mention-panel { left: 3.1rem; right: 3.1rem; max-height: 12rem; } }
 	</style>
 
-	<script defer src="/js/room.js?v=mention-home-return-20260611"></script>
+	<script defer src="/js/room.js?v=mention-home-return-20260611-floatingfix"></script>
 </body>
 
 </html>
