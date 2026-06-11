@@ -2,7 +2,7 @@ const express = require("express");
 
 const { requireLogin } = require("../middlewares/auth");
 const { renderCreate, postCreate } = require("../controllers/createSoupController");
-const { renderSoupDetail, getComments, postComment, deleteComment, togglePinComment, postRating } = require("../controllers/soupController");
+const { renderSoupDetail, getComments, postComment, deleteComment, togglePinComment, postRating, toggleFavorite } = require("../controllers/soupController");
 const { askFacilitator } = require("../controllers/facilitatorController");
 const { getDb } = require("../db/database");
 const { markRevealed, hasRevealed } = require("../middlewares/reveal");
@@ -61,6 +61,9 @@ router.get("/:id/comments", getComments);
 
 // 评分：登录用户每碗汤保留一条评分，重复评分会覆盖
 router.post("/:id/rating", postRating);
+
+// 收藏/取消收藏：登录用户每碗汤一条收藏记录
+router.post("/:id/favorite", requireLogin, toggleFavorite);
 
 // 发布留言/回复
 router.post("/:id/comments", postComment);

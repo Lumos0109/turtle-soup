@@ -24,6 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
 	const hideReadInput = document.getElementById("hideReadInput");
 	const hideReadBtn = document.getElementById("hideReadBtn");
 	const hideReadIcon = document.getElementById("hideReadIcon");
+	const favoriteOnlyInput = document.getElementById("favoriteOnlyInput");
+	const favoriteOnlyBtn = document.getElementById("favoriteOnlyBtn");
+	const favoriteOnlyIcon = document.getElementById("favoriteOnlyIcon");
 
 	if (!filterBtn || !filterPanel || !applyBtn || !tagsInput || !sortInput || !form) return;
 
@@ -51,6 +54,15 @@ document.addEventListener("DOMContentLoaded", () => {
 		hideReadBtn.classList.toggle("text-white", enabled);
 		hideReadBtn.classList.toggle("border-black", enabled);
 		if (hideReadIcon) hideReadIcon.textContent = enabled ? "✓" : "";
+	}
+
+	function renderFavoriteOnlyButton() {
+		if (!favoriteOnlyInput || !favoriteOnlyBtn) return;
+		const enabled = favoriteOnlyInput.value === "1";
+		favoriteOnlyBtn.classList.toggle("bg-black", enabled);
+		favoriteOnlyBtn.classList.toggle("text-white", enabled);
+		favoriteOnlyBtn.classList.toggle("border-black", enabled);
+		if (favoriteOnlyIcon) favoriteOnlyIcon.textContent = enabled ? "✓" : "";
 	}
 
 	function nextHotSort(cur) {
@@ -99,7 +111,9 @@ document.addEventListener("DOMContentLoaded", () => {
 			tagsInput.value = "";
 			sortInput.value = "";
 			if (hideReadInput) hideReadInput.value = "";
+			if (favoriteOnlyInput) favoriteOnlyInput.value = "";
 			renderHideReadButton();
+			renderFavoriteOnlyButton();
 			renderSortButtons();
 			form.submit();
 		});
@@ -132,6 +146,17 @@ document.addEventListener("DOMContentLoaded", () => {
 		});
 	}
 
+	if (favoriteOnlyBtn && favoriteOnlyInput) {
+		favoriteOnlyBtn.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			favoriteOnlyInput.value = favoriteOnlyInput.value === "1" ? "" : "1";
+			tagsInput.value = getCheckedTagIds().join(",");
+			renderFavoriteOnlyButton();
+			form.submit();
+		});
+	}
+
 	applyBtn.addEventListener("click", () => {
 		tagsInput.value = getCheckedTagIds().join(",");
 		form.submit();
@@ -151,6 +176,49 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (!filterBtn.contains(target) && !filterPanel.contains(target)) closePanel();
 	});
 
+
+	const HOME_RETURN_KEY = "hgtHomeReturnState";
+	const HOME_RESTORE_FLAG = "hgtHomeRestoreScroll";
+
+	function currentHomeUrl() {
+		return window.location.pathname + window.location.search;
+	}
+
+	function saveHomeReturnState() {
+		try {
+			window.localStorage.setItem(HOME_RETURN_KEY, JSON.stringify({
+				url: currentHomeUrl(),
+				scrollY: Math.max(0, Math.round(window.scrollY || document.documentElement.scrollTop || 0)),
+				time: Date.now(),
+			}));
+		} catch (_) {}
+	}
+
+	function restoreHomeScrollIfNeeded() {
+		try {
+			if (window.localStorage.getItem(HOME_RESTORE_FLAG) !== "1") return;
+			const raw = window.localStorage.getItem(HOME_RETURN_KEY);
+			if (!raw) return;
+			const saved = JSON.parse(raw);
+			if (!saved || saved.url !== currentHomeUrl()) return;
+			window.localStorage.removeItem(HOME_RESTORE_FLAG);
+			const y = Math.max(0, Number(saved.scrollY || 0));
+			const restore = () => window.scrollTo({ top: y, left: 0, behavior: "auto" });
+			restore();
+			window.requestAnimationFrame(restore);
+			window.setTimeout(restore, 120);
+			window.setTimeout(restore, 420);
+		} catch (_) {}
+	}
+
+	document.querySelectorAll("[data-home-soup-link]").forEach((link) => {
+		link.addEventListener("click", saveHomeReturnState);
+	});
+
+	window.addEventListener("pagehide", saveHomeReturnState);
+	restoreHomeScrollIfNeeded();
+
 	renderHideReadButton();
+	renderFavoriteOnlyButton();
 	renderSortButtons();
 });

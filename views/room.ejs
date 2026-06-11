@@ -113,11 +113,12 @@
 					</div>
 				</div>
 				<div id="chatList" class="room-chat-list h-[58vh] min-h-[420px] space-y-3 overflow-y-auto rounded-xl border border-neutral-100 bg-neutral-50 p-3 pr-1 custom-scrollbar"></div>
-				<form id="chatForm" class="room-chat-form mt-3 flex gap-2">
+				<form id="chatForm" class="room-chat-form relative mt-3 flex gap-2">
+					<div id="roomMentionPanel" class="room-mention-panel hidden"></div>
 					<button id="openStickerModalBtn" class="room-icon-btn room-tooltip shrink-0" data-tip="发表情" type="button" aria-label="发表情">
 						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
 					</button>
-					<input id="chatInput" class="min-w-0 flex-1 rounded-full border border-neutral-300 px-4 py-2 text-sm outline-none focus:border-black" maxlength="300" placeholder="聊天或讨论一下…" />
+					<input id="chatInput" class="min-w-0 flex-1 rounded-full border border-neutral-300 px-4 py-2 text-sm outline-none focus:border-black" maxlength="300" placeholder="聊天或讨论一下，输入 @ 可提醒房间成员…" autocomplete="off" />
 					<button class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white" type="submit" aria-label="发送">
 						<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/></svg>
 					</button>
@@ -340,9 +341,14 @@
 		@media (min-width: 640px) { .room-sticker-img { width: 6.5rem; height: 6.5rem; } }
 		.room-sticker-choice { display: inline-flex; align-items: center; justify-content: center; width: 5.75rem; height: 5.75rem; border: 1px solid rgb(229 229 229); border-radius: 1rem; background: rgb(250 250 250); transition: all 150ms ease; }
 		.room-sticker-choice:hover { border-color: black; background: white; transform: translateY(-1px); }
+		.room-mention-panel { position: absolute; left: 3.25rem; right: 3.25rem; bottom: calc(100% + .45rem); z-index: 80; max-height: 14rem; overflow-y: auto; border: 1px solid rgb(212 212 212); border-radius: 1rem; background: rgba(255,255,255,.98); padding: .35rem; box-shadow: 0 16px 40px rgba(0,0,0,.18); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+		.room-mention-option { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .75rem; border-radius: .75rem; padding: .55rem .7rem; text-align: left; font-size: .875rem; color: rgb(23 23 23); }
+		.room-mention-option:hover, .room-mention-option.is-active { background: rgb(23 23 23); color: white; }
+		.room-mention-role { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: .68rem; opacity: .65; }
+		@media (max-width: 640px) { .room-mention-panel { left: 3.1rem; right: 3.1rem; max-height: 12rem; } }
 	</style>
 
-	<script defer src="/js/room.js?v=ai-host-chat-visible-20260604-2"></script>
+	<script defer src="/js/room.js?v=mention-home-return-20260611"></script>
 </body>
 
 </html>

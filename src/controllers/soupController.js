@@ -113,9 +113,13 @@ function renderSoupDetail(req, res) {
 	`).all(soupId);
 
 	let currentUserRating = null;
+	let isFavorited = false;
 	if (currentUser) {
 		const ratingRow = db.prepare(`SELECT score FROM soup_ratings WHERE soup_id = ? AND user_id = ?`).get(soupId, currentUser.id);
 		currentUserRating = ratingRow ? Number(ratingRow.score) : null;
+
+		const favoriteRow = db.prepare(`SELECT 1 FROM soup_favorites WHERE soup_id = ? AND user_id = ?`).get(soupId, currentUser.id);
+		isFavorited = !!favoriteRow;
 	}
 
 	res.render("soup_detail", {
@@ -126,6 +130,7 @@ function renderSoupDetail(req, res) {
 		revealed,
 		hasLiked,
 		currentUserRating,
+		isFavorited,
 		soupTags,
 		commentError: null,
 	});
@@ -295,6 +300,35 @@ function togglePinComment(req, res) {
 }
 
 
+
+function toggleFavorite(req, res) {
+	const db = getDb();
+	const soupId = Number(req.params.id);
+	const user = req.session.user;
+
+	if (!user) return res.status(401).json({ message: "请先登录后再收藏" });
+	if (!Number.isFinite(soupId)) return res.status(400).json({ message: "参数错误" });
+
+	const soup = db.prepare(`SELECT * FROM soups WHERE id=?`).get(soupId);
+	if (!soup || !canAccessSoup(req, soup)) {
+		return res.status(404).json({ message: "海龟汤不存在或不可收藏" });
+	}
+
+	const existed = db.prepare(`SELECT 1 FROM soup_favorites WHERE soup_id=? AND user_id=?`).get(soupId, user.id);
+	if (existed) {
+		db.prepare(`DELETE FROM soup_favorites WHERE soup_id=? AND user_id=?`).run(soupId, user.id);
+	} else {
+		db.prepare(`INSERT OR IGNORE INTO soup_favorites (soup_id, user_id) VALUES (?, ?)`).run(soupId, user.id);
+	}
+
+	const favoriteCount = db.prepare(`SELECT COUNT(1) AS c FROM soup_favorites WHERE soup_id=?`).get(soupId).c;
+	return res.json({
+		ok: true,
+		favorited: !existed,
+		favoriteCount,
+	});
+}
+
 function postRating(req, res) {
 	const db = getDb();
 	const soupId = Number(req.params.id);
@@ -377,5 +411,6 @@ module.exports = {
 	deleteComment,
 	togglePinComment,
 	postRating,
+	toggleFavorite,
 	redeemShareCode,
 };

@@ -415,6 +415,21 @@
 	const mobileQuery = window.matchMedia('(max-width: 639px)');
 	let backdrop = document.getElementById('siteSupportBackdrop');
 
+	(function syncHomeLogoReturnTarget() {
+		const logoLink = document.querySelector('.nav-logo-link');
+		if (!logoLink || window.location.pathname === '/' || !/^\/soups\/\d+/.test(window.location.pathname)) return;
+		try {
+			const raw = window.localStorage.getItem('hgtHomeReturnState');
+			if (!raw) return;
+			const saved = JSON.parse(raw);
+			if (!saved || !saved.url || Date.now() - Number(saved.time || 0) > 24 * 60 * 60 * 1000) return;
+			logoLink.setAttribute('href', saved.url);
+			logoLink.addEventListener('click', () => {
+				window.localStorage.setItem('hgtHomeRestoreScroll', '1');
+			});
+		} catch (_) {}
+	})();
+
 	if (!panel || supportButtons.length === 0) return;
 
 	const panelPlaceholder = document.createComment('siteSupportPanel original position');

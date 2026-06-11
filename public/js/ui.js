@@ -107,6 +107,7 @@
 		const locked = document.querySelector(".js-discussion-locked");
 		const discussion = document.querySelector(".js-discussion");
 		const likeBtn = root.querySelector(".js-like-btn");
+		const favoriteBtn = document.querySelector(".js-favorite-btn");
 		const shareBtns = document.querySelectorAll(".js-share-btn");
 		const rateBtn = document.querySelector(".js-rate-btn");
 		const ratingModal = document.getElementById("ratingModal");
@@ -301,6 +302,52 @@
 					toast("点赞成功");
 				} catch {
 					toast("网络异常，点赞失败。");
+				}
+			});
+		}
+
+		function paintFavoriteButton(favorited) {
+			if (!favoriteBtn) return;
+			favoriteBtn.dataset.favorited = favorited ? "1" : "0";
+			favoriteBtn.classList.toggle("border-black", favorited);
+			favoriteBtn.classList.toggle("bg-black", favorited);
+			favoriteBtn.classList.toggle("text-white", favorited);
+			favoriteBtn.classList.toggle("hover:bg-neutral-800", favorited);
+			favoriteBtn.classList.toggle("border-neutral-300", !favorited);
+			favoriteBtn.classList.toggle("bg-neutral-100", !favorited);
+			favoriteBtn.classList.toggle("text-neutral-600", !favorited);
+			favoriteBtn.classList.toggle("hover:bg-neutral-200", !favorited);
+			favoriteBtn.classList.toggle("hover:text-black", !favorited);
+
+			const textEl = favoriteBtn.querySelector(".js-favorite-text");
+			if (textEl) textEl.textContent = favorited ? "已收藏" : "收藏";
+
+			const iconEl = favoriteBtn.querySelector(".js-favorite-icon");
+			if (iconEl) iconEl.setAttribute("fill", favorited ? "currentColor" : "none");
+		}
+
+		if (favoriteBtn) {
+			favoriteBtn.addEventListener("click", async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+
+				if (favoriteBtn.dataset.loggedIn !== "1") {
+					window.location.href = favoriteBtn.dataset.loginUrl || `/auth/login?next=/soups/${soupId}`;
+					return;
+				}
+
+				favoriteBtn.disabled = true;
+				try {
+					const res = await fetch(`/soups/${soupId}/favorite`, { method: "POST" });
+					const data = await res.json().catch(() => ({}));
+					if (!res.ok) return toast(data.message || "收藏失败");
+
+					paintFavoriteButton(!!data.favorited);
+					toast(data.favorited ? "已收藏" : "已取消收藏");
+				} catch {
+					toast("网络异常，收藏失败。");
+				} finally {
+					favoriteBtn.disabled = false;
 				}
 			});
 		}

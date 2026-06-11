@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hgt-shell-v4-20260604-room-chat-visible';
+const CACHE_NAME = 'hgt-shell-v6-20260611-soup-favorite';
 const STATIC_ASSETS = [
   '/favicon.svg',
   '/manifest.webmanifest'

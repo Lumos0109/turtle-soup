@@ -6,6 +6,7 @@ function renderHome(req, res) {
 	const q = (req.query.q || "").trim();
 	const currentUser = req.session.user || null;
 	const hideRead = !!(currentUser && req.query.hide_read === "1");
+	const favoriteOnly = !!(currentUser && req.query.favorite === "1");
 
 	const tags = db
 		.prepare(
@@ -54,6 +55,14 @@ function renderHome(req, res) {
 		where += ` AND NOT EXISTS (
 		SELECT 1 FROM soup_reveals sr
 		WHERE sr.soup_id = s.id AND sr.user_id = ?
+	)`;
+		params.push(currentUser.id);
+	}
+
+	if (favoriteOnly) {
+		where += ` AND EXISTS (
+		SELECT 1 FROM soup_favorites sf
+		WHERE sf.soup_id = s.id AND sf.user_id = ?
 	)`;
 		params.push(currentUser.id);
 	}
@@ -122,7 +131,7 @@ function renderHome(req, res) {
 		selectedTags,
 		activeAnnouncement,
 		announcements,
-		query: { q, tagsParam: tagIds.join(","), sort, hideRead },
+		query: { q, tagsParam: tagIds.join(","), sort, hideRead, favoriteOnly },
 		currentUser,
 	});
 }

@@ -218,6 +218,15 @@ function createTables() {
 			FOREIGN KEY (soup_id) REFERENCES soups(id) ON DELETE CASCADE
 		);`,
 
+		`CREATE TABLE IF NOT EXISTS soup_favorites (
+			soup_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+			PRIMARY KEY (soup_id, user_id),
+			FOREIGN KEY (soup_id) REFERENCES soups(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+
 		`CREATE TABLE IF NOT EXISTS rooms (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			code TEXT NOT NULL UNIQUE,
@@ -332,6 +341,8 @@ function migrate() {
 		"CREATE INDEX IF NOT EXISTS idx_announcements_active_updated ON announcements(is_active, updated_at);",
 		"CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read, created_at);",
 		"CREATE INDEX IF NOT EXISTS idx_soup_reveals_user ON soup_reveals(user_id, soup_id);",
+		"CREATE INDEX IF NOT EXISTS idx_soup_favorites_user ON soup_favorites(user_id, soup_id);",
+		"CREATE INDEX IF NOT EXISTS idx_soup_favorites_soup ON soup_favorites(soup_id, user_id);",
 		"CREATE INDEX IF NOT EXISTS idx_rooms_status_activity ON rooms(status, last_activity_at);",
 		"CREATE INDEX IF NOT EXISTS idx_room_members_seen ON room_members(room_id, last_seen_at);",
 		"CREATE INDEX IF NOT EXISTS idx_room_questions_room ON room_questions(room_id, id);",

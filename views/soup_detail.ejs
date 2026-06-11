@@ -143,6 +143,21 @@
 							<span>AI主持人</span>
 						</button>
 
+						<button
+							type="button"
+							class="js-favorite-btn nb-tooltip inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors <%= isFavorited ? 'border-black bg-black text-white hover:bg-neutral-800' : 'border-neutral-300 bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-black' %>"
+							data-tip="收藏"
+							data-favorited="<%= isFavorited ? '1' : '0' %>"
+							data-logged-in="<%= currentUser ? '1' : '0' %>"
+							data-login-url="/auth/login?next=<%= encodeURIComponent('/soups/' + soup.id) %>"
+							aria-label="收藏"
+						>
+							<svg class="js-favorite-icon" width="18" height="18" viewBox="0 0 24 24" fill="<%= isFavorited ? 'currentColor' : 'none' %>" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
+							</svg>
+							<span class="js-favorite-text"><%= isFavorited ? '已收藏' : '收藏' %></span>
+						</button>
+
 					<% if (soup.has_host_manual && (soup.host_manual || '').trim()) { %>
 						<button type="button" class="js-host-manual-btn nb-tooltip inline-flex items-center gap-1 rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-200 hover:text-black transition-colors" data-tip="主持人手册" aria-label="主持人手册">
 							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

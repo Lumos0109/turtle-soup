@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-	const ROOM_JS_VERSION = "ai-host-chat-visible-20260604-2";
+	const ROOM_JS_VERSION = "mention-home-return-20260611";
 	console.info("[room.js] loaded", ROOM_JS_VERSION);
 	const main = document.querySelector("main[data-room-code]");
 	if (!main) return;
@@ -71,6 +71,9 @@ document.addEventListener("DOMContentLoaded", () => {
 	let lastStickerSignature = "";
 	let editingQuestionId = null;
 	let pickerMode = "human";
+	let mentionContext = null;
+	let mentionActiveIndex = 0;
+	let mentionHideTimer = 0;
 
 	const $ = (id) => document.getElementById(id);
 	const toastEl = $("roomToast");
@@ -94,6 +97,83 @@ document.addEventListener("DOMContentLoaded", () => {
 			.replaceAll(">", "&gt;")
 			.replaceAll('"', "&quot;")
 			.replaceAll("'", "&#039;");
+	}
+
+
+	function getOnlineMentionMembers() {
+		const seen = new Set();
+		return (state?.members || [])
+			.filter((member) => member && member.online && member.username)
+			.filter((member) => {
+				const key = String(member.username).trim().toLowerCase();
+				if (!key || seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			})
+			.map((member) => ({
+				username: String(member.username).trim(),
+				role: member.role === "host" ? "主持人" : "房间成员",
+			}));
+	}
+
+	function getMentionContext(input) {
+		if (!input) return null;
+		const cursor = Number.isFinite(input.selectionStart) ? input.selectionStart : input.value.length;
+		const prefix = input.value.slice(0, cursor);
+		const at = prefix.lastIndexOf("@");
+		if (at < 0) return null;
+		const before = prefix[at - 1] || "";
+		if (before && !/\s/.test(before)) return null;
+		const query = prefix.slice(at + 1);
+		if (/[\s，,。！？!?:：;；、]/.test(query)) return null;
+		return { start: at, end: cursor, query };
+	}
+
+	function getMentionMatches() {
+		if (!mentionContext) return [];
+		const q = mentionContext.query.trim().toLowerCase();
+		return getOnlineMentionMembers()
+			.filter((member) => !q || member.username.toLowerCase().includes(q))
+			.slice(0, 8);
+	}
+
+	function hideMentionPanel() {
+		const panel = $("roomMentionPanel");
+		if (panel) {
+			panel.classList.add("hidden");
+			panel.innerHTML = "";
+		}
+		mentionContext = null;
+		mentionActiveIndex = 0;
+	}
+
+	function renderMentionPanel() {
+		const panel = $("roomMentionPanel");
+		const input = $("chatInput");
+		if (!panel || !input) return;
+		mentionContext = getMentionContext(input);
+		if (!mentionContext) return hideMentionPanel();
+		const matches = getMentionMatches();
+		if (!matches.length) return hideMentionPanel();
+		if (mentionActiveIndex >= matches.length) mentionActiveIndex = 0;
+		panel.innerHTML = matches.map((member, index) => `
+			<button class="room-mention-option ${index === mentionActiveIndex ? "is-active" : ""}" type="button" data-mention-name="${esc(member.username)}">
+				<span class="truncate">@${esc(member.username)}</span>
+				<span class="room-mention-role">${esc(member.role)}</span>
+			</button>`).join("");
+		panel.classList.remove("hidden");
+	}
+
+	function insertMention(username) {
+		const input = $("chatInput");
+		if (!input || !mentionContext || !username) return;
+		const value = input.value;
+		const mentionText = `@${username} `;
+		input.value = value.slice(0, mentionContext.start) + mentionText + value.slice(mentionContext.end);
+		const nextCursor = mentionContext.start + mentionText.length;
+		input.focus();
+		input.setSelectionRange(nextCursor, nextCursor);
+		hideMentionPanel();
 	}
 
 	function getEventList() {
@@ -517,6 +597,9 @@ document.addEventListener("DOMContentLoaded", () => {
 		safeRender("history", renderHistory);
 		safeRender("chat", renderChat);
 		safeRender("stickers", renderStickers);
+		safeRender("mentions", () => {
+			if (mentionContext && document.activeElement === $("chatInput")) renderMentionPanel();
+		});
 	}
 
 	async function refreshState(silent = true) {
@@ -636,8 +719,53 @@ document.addEventListener("DOMContentLoaded", () => {
 		const input = $("chatInput");
 		const content = input.value.trim();
 		if (!content) return;
+		hideMentionPanel();
 		await doPost(`${api}/chat`, { content });
 		input.value = "";
+	});
+
+	$("chatInput")?.addEventListener("input", () => {
+		mentionActiveIndex = 0;
+		renderMentionPanel();
+	});
+
+	$("chatInput")?.addEventListener("click", renderMentionPanel);
+
+	$("chatInput")?.addEventListener("blur", () => {
+		window.clearTimeout(mentionHideTimer);
+		mentionHideTimer = window.setTimeout(hideMentionPanel, 180);
+	});
+
+	$("chatInput")?.addEventListener("keydown", (e) => {
+		const panel = $("roomMentionPanel");
+		if (!panel || panel.classList.contains("hidden")) return;
+		const matches = getMentionMatches();
+		if (!matches.length) return;
+		if (e.key === "ArrowDown") {
+			e.preventDefault();
+			mentionActiveIndex = (mentionActiveIndex + 1) % matches.length;
+			renderMentionPanel();
+		}
+		if (e.key === "ArrowUp") {
+			e.preventDefault();
+			mentionActiveIndex = (mentionActiveIndex - 1 + matches.length) % matches.length;
+			renderMentionPanel();
+		}
+		if (e.key === "Enter" && mentionContext) {
+			e.preventDefault();
+			insertMention(matches[mentionActiveIndex]?.username || matches[0].username);
+		}
+		if (e.key === "Escape") {
+			e.preventDefault();
+			hideMentionPanel();
+		}
+	});
+
+	$("roomMentionPanel")?.addEventListener("mousedown", (e) => {
+		const btn = e.target.closest(".room-mention-option");
+		if (!btn) return;
+		e.preventDefault();
+		insertMention(btn.dataset.mentionName || "");
 	});
 
 	$("hintForm")?.addEventListener("submit", async (e) => {
