@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-	const ROOM_JS_VERSION = "room-mobile-chat-safe-20260611";
+	const ROOM_JS_VERSION = "mention-reply-icon-20260617";
 	console.info("[room.js] loaded", ROOM_JS_VERSION);
 	const main = document.querySelector("main[data-room-code]");
 	if (!main) return;
@@ -74,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	let mentionContext = null;
 	let mentionActiveIndex = 0;
 	let mentionHideTimer = 0;
+	let replyDraft = null;
 
 	const $ = (id) => document.getElementById(id);
 	const toastEl = $("roomToast");
@@ -97,6 +98,14 @@ document.addEventListener("DOMContentLoaded", () => {
 			.replaceAll(">", "&gt;")
 			.replaceAll('"', "&quot;")
 			.replaceAll("'", "&#039;");
+	}
+
+	function safeJsonParse(text, fallback = null) {
+		try {
+			return JSON.parse(text);
+		} catch (_) {
+			return fallback;
+		}
 	}
 
 
@@ -176,6 +185,88 @@ document.addEventListener("DOMContentLoaded", () => {
 		hideMentionPanel();
 	}
 
+	function mentionBoundaryOk(ch) {
+		return !ch || /[\s，,。！？!?:：;；、）)】\]》>"'“”‘’]/.test(ch);
+	}
+
+	function hasMentionForViewer(content) {
+		const username = String(state?.viewer?.username || "").trim();
+		const text = String(content || "");
+		if (!username || !text) return false;
+		const needle = `@${username}`;
+		let index = text.indexOf(needle);
+		while (index >= 0) {
+			const next = text[index + needle.length] || "";
+			if (mentionBoundaryOk(next)) return true;
+			index = text.indexOf(needle, index + needle.length);
+		}
+		return false;
+	}
+
+	function getEventById(eventId) {
+		const id = String(eventId || "");
+		if (!id) return null;
+		return getChatEventList().find((event) => String(event.id) === id) || null;
+	}
+
+	function summarizeReplyContent(event) {
+		if (!event) return "";
+		if (event.type === "sticker") return "[表情]";
+		const text = String(event.content || "").replace(/\s+/g, " ").trim();
+		return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+	}
+
+	function normalizeReplyDraft(event) {
+		if (!event || !Number.isFinite(Number(event.id))) return null;
+		return {
+			id: Number(event.id),
+			username: event.username || "系统",
+			type: event.type || "chat",
+			content: summarizeReplyContent(event),
+		};
+	}
+
+	function setReplyDraft(event) {
+		replyDraft = normalizeReplyDraft(event);
+		renderReplyPreview();
+		const input = $("chatInput");
+		if (input) input.focus();
+	}
+
+	function clearReplyDraft() {
+		replyDraft = null;
+		renderReplyPreview();
+	}
+
+	function renderReplyPreview() {
+		const preview = $("chatReplyPreview");
+		const form = $("chatForm");
+		if (!preview || !form) return;
+		form.classList.toggle("has-reply", !!replyDraft);
+		if (!replyDraft) {
+			preview.classList.add("hidden");
+			preview.innerHTML = "";
+			return;
+		}
+		preview.innerHTML = `
+			<div class="min-w-0 flex-1">
+				<div class="font-mono text-[11px] text-neutral-500">正在回复 @${esc(replyDraft.username)}</div>
+				<div class="truncate text-sm text-neutral-700">${esc(replyDraft.content || "（空内容）")}</div>
+			</div>
+			<button id="cancelReplyBtn" class="shrink-0 rounded-full border border-neutral-300 bg-white px-2 py-1 font-mono text-xs hover:border-black" type="button">取消</button>
+		`;
+		preview.classList.remove("hidden");
+	}
+
+	function renderQuotedReply(reply) {
+		if (!reply || !reply.content) return "";
+		return `
+			<div class="room-quoted-reply">
+				<div class="font-mono text-[11px] text-neutral-500">回复 @${esc(reply.username || "系统")}</div>
+				<div class="truncate text-xs text-neutral-600">${esc(reply.content || "")}</div>
+			</div>`;
+	}
+
 	function getEventList() {
 		return Array.isArray(state?.events) ? state.events : [];
 	}
@@ -189,6 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			content: q.content || "",
 			questionId: q.id,
 			answer: q.answer || null,
+			isKey: !!q.isKey,
 			images: [],
 			createdAt: q.createdAt || "",
 		}));
@@ -206,6 +298,10 @@ document.addEventListener("DOMContentLoaded", () => {
 			e.type,
 			e.questionId || "",
 			e.answer || "",
+			e.isKey ? 1 : 0,
+			e.replyToEventId || "",
+			e.reply?.username || "",
+			e.reply?.content || "",
 			e.content || "",
 			(e.images || []).join(","),
 			e.createdAt || "",
@@ -246,6 +342,26 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (!ok) throw new Error("copy failed");
 	}
 
+	function downloadBlob(blob, filename) {
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
+	}
+
+	function readTextFile(file) {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(String(reader.result || ""));
+			reader.onerror = () => reject(new Error("读取快照文件失败"));
+			reader.readAsText(file, "utf-8");
+		});
+	}
+
 	function openModal(id) {
 		const el = $(id);
 		if (!el) return;
@@ -282,6 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (event.type === "hint") return historyFilter === "all" || historyFilter === "hint";
 		if (event.type === "question") {
 			if (historyFilter === "all") return true;
+			if (historyFilter === "key") return !!event.isKey;
 			if (historyFilter === "pending") return !event.answer;
 			return event.answer === historyFilter;
 		}
@@ -305,11 +422,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	function historyHostActions(event) {
 		if (!state?.viewer?.isHost || state?.room?.aiHostEnabled) return "";
+		const keyToggle = event.type === "question"
+			? `<button class="room-toggle-key-btn rounded-full border border-neutral-300 bg-white/70 px-2 py-1 hover:border-black" data-question-id="${event.questionId}" data-is-key="${event.isKey ? "1" : "0"}" type="button">${event.isKey ? "取消关键" : "标记关键"}</button>`
+			: "";
 		const edit = event.type === "question"
 			? `<button class="room-edit-answer-btn rounded-full border border-neutral-300 bg-white/70 px-2 py-1 hover:border-black" data-question-id="${event.questionId}" data-question-content="${esc(event.content)}" type="button">修改回答</button>`
 			: "";
 		return `
 			<div class="mt-2 flex flex-wrap gap-1 font-mono text-xs">
+				${keyToggle}
 				${edit}
 				<button class="room-delete-history-btn rounded-full border border-red-200 bg-white/70 px-2 py-1 text-red-600 hover:border-red-600" data-event-id="${event.id}" type="button">删除记录</button>
 			</div>`;
@@ -329,12 +450,13 @@ document.addEventListener("DOMContentLoaded", () => {
 		list.innerHTML = items.map((e) => {
 			const meta = answerMeta(e.answer, e.type);
 			const images = (e.images || []).map((src) => `<img src="${esc(src)}" class="mt-2 max-h-40 rounded-lg border border-neutral-200" alt="提示图片">`).join("");
+			const keyBadge = e.type === "question" && e.isKey ? `<span class="ml-1 rounded-full border border-black bg-white px-1.5 py-0.5 text-[10px] text-black">关键提问</span>` : "";
 			return `
 				<div class="rounded-xl border p-3 ${meta.cls}">
 					<div class="flex items-start gap-2">
 						<span class="room-history-icon">${meta.icon}</span>
 						<div class="min-w-0 flex-1">
-							<div class="font-mono text-xs opacity-70">${esc(meta.text)} · ${esc(e.username)} · ${esc(e.createdAt)}</div>
+							<div class="font-mono text-xs opacity-70">${esc(meta.text)} · ${esc(e.username)} · ${esc(e.createdAt)}${keyBadge}</div>
 							<div class="mt-1 whitespace-pre-wrap text-sm leading-relaxed">${esc(e.content)}</div>
 							${images}
 							${e.type === "question" ? answerButtons(e.questionId, e.answer) : ""}
@@ -386,10 +508,16 @@ document.addEventListener("DOMContentLoaded", () => {
 			if (e.type === "reset") label = "结束";
 			if (e.type === "reveal") label = "查看汤底";
 			if (e.type === "vote") label = "投票";
+			if (e.type === "chat" && hasMentionForViewer(e.content)) cls += " room-mentioned-message";
 			const images = (e.images || []).map((src) => `<img src="${esc(src)}" class="mt-2 max-h-36 rounded-lg border border-neutral-200" alt="提示图片">`).join("");
+			const quotedReply = renderQuotedReply(e.reply);
 			const body = e.type === "sticker"
 				? `<img src="${esc(e.content)}" class="room-sticker-img mt-2" alt="表情">`
 				: `<div class="mt-1 whitespace-pre-wrap text-sm leading-relaxed">${esc(e.content)}</div>`;
+			const canReply = Number.isFinite(Number(e.id)) && !["join", "leave"].includes(e.type);
+			const replyButton = canReply ? `<button class="room-reply-btn room-reply-icon-btn" data-event-id="${esc(e.id)}" type="button" title="引用回复" aria-label="引用回复">
+				<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14a2 2 0 0 0 2-2V8h-2"/><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M8 14a2 2 0 0 0 2-2V8H8"/></svg>
+			</button>` : "";
 			let action = "";
 			if (e.type === "reveal" && state.room?.aiHostEnabled && state.room?.status === "playing") {
 				action = `<button class="ai-finish-vote-open shrink-0 rounded-full border border-black bg-white px-3 py-1.5 font-mono text-xs text-black hover:bg-black hover:text-white" type="button">完结撒花</button>`;
@@ -398,15 +526,17 @@ document.addEventListener("DOMContentLoaded", () => {
 				action = `<button class="ai-room-reset-btn shrink-0 rounded-full border border-red-200 bg-white px-3 py-1.5 font-mono text-xs text-red-600 hover:border-red-600 hover:bg-red-600 hover:text-white" type="button">结束本局</button>`;
 			}
 			return `
-				<div class="rounded-xl border p-3 ${cls}">
-					<div class="font-mono text-[11px] text-neutral-500">${esc(label)} · ${esc(e.username)} · ${esc(e.createdAt)}</div>
+				<div class="room-chat-card relative rounded-xl border p-3 ${cls}">
+					${replyButton}
+					<div class="pr-8 font-mono text-[11px] text-neutral-500">${esc(label)} · ${esc(e.username)} · ${esc(e.createdAt)}</div>
 					<div class="mt-1 flex items-start justify-between gap-3">
 						<div class="min-w-0 flex-1">
+							${quotedReply}
 							${body}
 							${images}
 							${e.type === "question" && !e.answer ? answerButtons(e.questionId) : ""}
 						</div>
-						${action ? `<div class="shrink-0 pt-1">${action}</div>` : ""}
+						${action ? `<div class="shrink-0 pt-1 pr-7">${action}</div>` : ""}
 					</div>
 				</div>`;
 		}).join("");
@@ -566,8 +696,8 @@ document.addEventListener("DOMContentLoaded", () => {
 		$("useAiHostBtn")?.classList.toggle("hidden", !canUseAi);
 		if ($("soupWaitingText")) $("soupWaitingText").textContent = "待主持人选汤ing";
 
-		const hostItems = Array.from(document.querySelectorAll("#featureMenu .host-only"));
-		const anyVisible = hostItems.some((el) => !el.classList.contains("hidden"));
+		const menuItems = Array.from(document.querySelectorAll("#featureMenu button"));
+		const anyVisible = menuItems.some((el) => !el.classList.contains("hidden"));
 		$("featureMenuEmpty")?.classList.toggle("hidden", anyVisible);
 		renderFinishVoteStatus();
 	}
@@ -601,6 +731,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		safeRender("history", renderHistory);
 		safeRender("chat", renderChat);
 		safeRender("stickers", renderStickers);
+		safeRender("reply-preview", renderReplyPreview);
 		safeRender("mentions", () => {
 			if (mentionContext && document.activeElement === $("chatInput")) renderMentionPanel();
 		});
@@ -672,6 +803,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	$("openQuestionModalBtn")?.addEventListener("click", () => openModal("questionModal"));
 	$("openHistoryModalBtn")?.addEventListener("click", () => openModal("historyModal"));
 	$("openStickerModalBtn")?.addEventListener("click", () => openModal("stickerModal"));
+	$("openSnapshotModalBtn")?.addEventListener("click", () => { $("featureMenu")?.classList.add("hidden"); openModal("snapshotModal"); });
 	$("openHintModalBtn")?.addEventListener("click", () => { $("featureMenu")?.classList.add("hidden"); openModal("hintModal"); });
 	$("openBottomModalBtn")?.addEventListener("click", () => { $("featureMenu")?.classList.add("hidden"); openModal("bottomModal"); });
 	$("openManualModalBtn")?.addEventListener("click", () => { $("featureMenu")?.classList.add("hidden"); openModal("manualModal"); });
@@ -686,6 +818,40 @@ document.addEventListener("DOMContentLoaded", () => {
 	});
 	document.querySelectorAll(".fixed.inset-0").forEach((modal) => {
 		modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(modal.id); });
+	});
+
+	$("exportSnapshotBtn")?.addEventListener("click", async () => {
+		try {
+			const res = await fetch(`${api}/snapshot?_=${Date.now()}`, { cache: "no-store", headers: { "Accept": "application/json" } });
+			const text = await res.text();
+			if (!res.ok) {
+				const data = safeJsonParse(text, {});
+				throw new Error(data.message || "导出快照失败");
+			}
+			const filename = `turtle-room-snapshot-${roomCode}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+			downloadBlob(new Blob([text], { type: "application/json;charset=utf-8" }), filename);
+			toast("房间快照已导出");
+		} catch (error) {
+			toast(error.message || "导出快照失败");
+		}
+	});
+
+	$("importSnapshotBtn")?.addEventListener("click", async () => {
+		const file = $("snapshotFileInput")?.files?.[0];
+		if (!file) return toast("请先选择快照 JSON 文件");
+		if (!confirm("导入快照会覆盖当前房间的汤、提问、提示和讨论记录，是否继续？")) return;
+		try {
+			const text = await readTextFile(file);
+			const snapshot = JSON.parse(text);
+			await postJson(`${api}/snapshot`, { snapshot });
+			toast("快照导入成功，已恢复房间进度");
+			closeModal("snapshotModal");
+			if ($("snapshotFileInput")) $("snapshotFileInput").value = "";
+			resetRenderCache();
+			await refreshState(false);
+		} catch (error) {
+			toast(error.message || "导入快照失败");
+		}
 	});
 
 	document.addEventListener("click", (e) => {
@@ -724,8 +890,10 @@ document.addEventListener("DOMContentLoaded", () => {
 		const content = input.value.trim();
 		if (!content) return;
 		hideMentionPanel();
-		await doPost(`${api}/chat`, { content });
+		const replyToEventId = replyDraft?.id || null;
+		await doPost(`${api}/chat`, { content, replyToEventId });
 		input.value = "";
+		clearReplyDraft();
 	});
 
 	$("chatInput")?.addEventListener("input", () => {
@@ -798,6 +966,23 @@ document.addEventListener("DOMContentLoaded", () => {
 			const questionId = Number(answerBtn.dataset.questionId);
 			const answer = answerBtn.dataset.answer;
 			doPost(`${api}/answer`, { questionId, answer }, "已回答");
+			return;
+		}
+		const replyBtn = e.target.closest(".room-reply-btn");
+		if (replyBtn) {
+			const event = getEventById(replyBtn.dataset.eventId);
+			if (event) setReplyDraft(event);
+			return;
+		}
+		if (e.target.closest("#cancelReplyBtn")) {
+			clearReplyDraft();
+			return;
+		}
+		const keyBtn = e.target.closest(".room-toggle-key-btn");
+		if (keyBtn) {
+			const questionId = Number(keyBtn.dataset.questionId);
+			const isKey = keyBtn.dataset.isKey !== "1";
+			doPost(`${api}/questions/${questionId}/key`, { isKey }, isKey ? "已标记为关键提问" : "已取消关键标记");
 			return;
 		}
 		const deleteBtn = e.target.closest(".room-delete-history-btn");

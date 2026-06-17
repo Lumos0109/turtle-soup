@@ -261,6 +261,9 @@ function createTables() {
 			status TEXT NOT NULL DEFAULT 'pending',
 			answer TEXT,
 			answered_by INTEGER,
+			is_key INTEGER NOT NULL DEFAULT 0,
+			imported_username TEXT,
+			imported_answered_by_name TEXT,
 			created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
 			answered_at TEXT,
 			FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
@@ -277,6 +280,9 @@ function createTables() {
 			question_id INTEGER,
 			answer TEXT,
 			images_json TEXT,
+			display_username TEXT,
+			reply_to_event_id INTEGER,
+			reply_snapshot_json TEXT,
 			created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
 			FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
@@ -328,7 +334,13 @@ function migrate() {
 	ensureColumn("comments", "is_pinned", "INTEGER NOT NULL DEFAULT 0");
 	ensureColumn("comments", "pinned_at", "TEXT");
 	ensureColumn("rooms", "ai_host_enabled", "INTEGER NOT NULL DEFAULT 0");
+	ensureColumn("room_questions", "is_key", "INTEGER NOT NULL DEFAULT 0");
+	ensureColumn("room_questions", "imported_username", "TEXT");
+	ensureColumn("room_questions", "imported_answered_by_name", "TEXT");
 	ensureColumn("room_events", "images_json", "TEXT");
+	ensureColumn("room_events", "display_username", "TEXT");
+	ensureColumn("room_events", "reply_to_event_id", "INTEGER");
+	ensureColumn("room_events", "reply_snapshot_json", "TEXT");
 	ensureColumn("room_stickers", "original_name", "TEXT");
 	ensureColumn("room_stickers", "is_deleted", "INTEGER NOT NULL DEFAULT 0");
 
@@ -346,7 +358,9 @@ function migrate() {
 		"CREATE INDEX IF NOT EXISTS idx_rooms_status_activity ON rooms(status, last_activity_at);",
 		"CREATE INDEX IF NOT EXISTS idx_room_members_seen ON room_members(room_id, last_seen_at);",
 		"CREATE INDEX IF NOT EXISTS idx_room_questions_room ON room_questions(room_id, id);",
+		"CREATE INDEX IF NOT EXISTS idx_room_questions_key ON room_questions(room_id, is_key, id);",
 		"CREATE INDEX IF NOT EXISTS idx_room_events_room_id ON room_events(room_id, id);",
+		"CREATE INDEX IF NOT EXISTS idx_room_events_reply ON room_events(room_id, reply_to_event_id);",
 		"CREATE INDEX IF NOT EXISTS idx_room_stickers_active ON room_stickers(is_deleted, id);",
 		"CREATE INDEX IF NOT EXISTS idx_room_bottom_reveals_room ON room_bottom_reveals(room_id, user_id);",
 		"CREATE INDEX IF NOT EXISTS idx_room_finish_votes_room ON room_finish_votes(room_id, vote);",

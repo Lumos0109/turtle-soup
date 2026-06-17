@@ -98,8 +98,8 @@ function clearCurrentRoomSession(req, roomId) {
 
 function addEvent(db, roomId, userId, type, options = {}) {
 	const info = db.prepare(`
-		INSERT INTO room_events (room_id, user_id, type, content, question_id, answer, images_json)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO room_events (room_id, user_id, type, content, question_id, answer, images_json, display_username, reply_to_event_id, reply_snapshot_json)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`).run(
 		roomId,
 		userId || null,
@@ -108,9 +108,59 @@ function addEvent(db, roomId, userId, type, options = {}) {
 		options.questionId || null,
 		options.answer || null,
 		options.imagesJson || null,
+		options.displayUsername || null,
+		options.replyToEventId || null,
+		options.replySnapshotJson || null,
 	);
 	touchRoom(db, roomId);
 	return info.lastInsertRowid;
+}
+
+function safeJsonParse(value, fallback = null) {
+	try {
+		return JSON.parse(value);
+	} catch (_) {
+		return fallback;
+	}
+}
+
+function buildReplySnapshot(event) {
+	if (!event) return null;
+	return {
+		id: event.id || null,
+		type: event.type || "chat",
+		username: event.username || event.display_username || "系统",
+		content: asSnapshotString(event.content || "", 180),
+		createdAt: event.created_at || null,
+	};
+}
+
+function normalizeReplySnapshot(value) {
+	const snapshot = typeof value === "string" ? safeJsonParse(value, null) : value;
+	if (!snapshot || typeof snapshot !== "object") return null;
+	return {
+		id: snapshot.id || null,
+		type: asSnapshotString(snapshot.type || "chat", 30),
+		username: asSnapshotString(snapshot.username || "系统", 80),
+		content: asSnapshotString(snapshot.content || "", 180),
+		createdAt: asSnapshotString(snapshot.createdAt || snapshot.created_at || "", 32) || null,
+	};
+}
+
+function asSnapshotString(value, maxLength = 20000) {
+	const text = String(value || "").trim();
+	return text.length > maxLength ? text.slice(0, maxLength) : text;
+}
+
+function isAdmin(user) {
+	return user && user.role === "admin";
+}
+
+function canImportSnapshot(room, user) {
+	if (!room || !user) return false;
+	if (isAdmin(user)) return true;
+	if (!room.host_user_id && !isAiHostEnabled(room)) return true;
+	return isHost(room, user);
 }
 
 function cleanupRooms() {
@@ -386,9 +436,10 @@ function mapRoomState(room, user) {
 	}
 
 	const events = db.prepare(`
-		SELECT e.*, u.username
+		SELECT e.*, COALESCE(e.display_username, u.username) AS username, COALESCE(q.is_key, 0) AS is_key
 		FROM room_events e
 		LEFT JOIN users u ON u.id=e.user_id
+		LEFT JOIN room_questions q ON q.id=e.question_id
 		WHERE e.room_id=?
 		ORDER BY e.id DESC
 		LIMIT ?
@@ -397,15 +448,18 @@ function mapRoomState(room, user) {
 		type: e.type,
 		username: e.username || "系统",
 		content: e.content || "",
+		replyToEventId: e.reply_to_event_id || null,
+		reply: normalizeReplySnapshot(e.reply_snapshot_json),
 		questionId: e.question_id,
 		answer: e.answer || null,
 		answerText: e.answer ? ANSWER_TEXT[e.answer] : null,
+		isKey: Number(e.is_key || 0) === 1,
 		images: jsonParseArray(e.images_json),
 		createdAt: e.created_at,
 	}));
 
 	const questions = db.prepare(`
-		SELECT q.*, u.username AS username, au.username AS answered_by_name
+		SELECT q.*, COALESCE(q.imported_username, u.username) AS username, COALESCE(q.imported_answered_by_name, au.username) AS answered_by_name
 		FROM room_questions q
 		LEFT JOIN users u ON u.id=q.user_id
 		LEFT JOIN users au ON au.id=q.answered_by
@@ -418,6 +472,7 @@ function mapRoomState(room, user) {
 		status: q.status,
 		answer: q.answer || null,
 		answerText: q.answer ? ANSWER_TEXT[q.answer] : null,
+		isKey: Number(q.is_key || 0) === 1,
 		answeredByName: q.answered_by_name || null,
 		createdAt: q.created_at,
 		answeredAt: q.answered_at,
@@ -847,6 +902,24 @@ function deleteHistoryEvent(req, res) {
 	return res.status(400).json({ message: "只能删除提问或提示记录" });
 }
 
+function toggleKeyQuestion(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	if (!requireHost(req, res, room)) return;
+	if (isAiHostEnabled(room)) return res.status(400).json({ message: "AI主持人房间暂不支持主持人标记关键提问" });
+	const db = getDb();
+	const questionId = Number(req.params.questionId);
+	if (!Number.isFinite(questionId)) return res.status(400).json({ message: "参数错误" });
+	const question = db.prepare(`SELECT id, content, is_key FROM room_questions WHERE id=? AND room_id=?`).get(questionId, room.id);
+	if (!question) return res.status(404).json({ message: "问题不存在" });
+	const isKey = req.body && Object.prototype.hasOwnProperty.call(req.body, "isKey")
+		? (req.body.isKey ? 1 : 0)
+		: (Number(question.is_key || 0) === 1 ? 0 : 1);
+	db.prepare(`UPDATE room_questions SET is_key=? WHERE id=? AND room_id=?`).run(isKey, questionId, room.id);
+	touchRoom(db, room.id);
+	return res.json({ ok: true, isKey: !!isKey });
+}
+
 function postHint(req, res) {
 	const room = requireRoom(req, res);
 	if (!room) return;
@@ -869,7 +942,24 @@ function postChat(req, res) {
 	const content = String(req.body.content || "").trim();
 	if (!content) return res.status(400).json({ message: "内容不能为空" });
 	if (content.length > 300) return res.status(400).json({ message: "讨论内容最多 300 字" });
-	addEvent(db, room.id, user.id, "chat", { content });
+
+	let replyToEventId = null;
+	let replySnapshotJson = null;
+	const rawReplyToEventId = Number(req.body.replyToEventId || 0);
+	if (Number.isFinite(rawReplyToEventId) && rawReplyToEventId > 0) {
+		const replyEvent = db.prepare(`
+			SELECT e.id, e.type, e.content, e.created_at, COALESCE(e.display_username, u.username, '系统') AS username
+			FROM room_events e
+			LEFT JOIN users u ON u.id=e.user_id
+			WHERE e.room_id=? AND e.id=?
+		`).get(room.id, rawReplyToEventId);
+		if (replyEvent) {
+			replyToEventId = replyEvent.id;
+			replySnapshotJson = JSON.stringify(buildReplySnapshot(replyEvent));
+		}
+	}
+
+	addEvent(db, room.id, user.id, "chat", { content, replyToEventId, replySnapshotJson });
 	return res.json({ ok: true });
 }
 
@@ -960,6 +1050,256 @@ function resetAiRoom(req, res) {
 	return res.json({ ok: true });
 }
 
+function buildRoomSnapshot(db, room, user) {
+	const soup = room.soup_id ? db.prepare(`
+		SELECT s.*, CASE WHEN s.is_anonymous=1 THEN '匿名' ELSE COALESCE(u.username, 'Unknown') END AS author_name,
+			(SELECT GROUP_CONCAT(t.name, '、') FROM soup_tags st JOIN tags t ON t.id=st.tag_id WHERE st.soup_id=s.id AND COALESCE(t.is_hidden,0)=0) AS tag_names
+		FROM soups s
+		LEFT JOIN users u ON u.id=s.author_id
+		WHERE s.id=?
+	`).get(room.soup_id) : null;
+
+	const host = room.host_user_id ? db.prepare(`SELECT id, username FROM users WHERE id=?`).get(room.host_user_id) : null;
+	const members = db.prepare(`
+		SELECT u.username, rm.role, rm.joined_at, rm.last_seen_at
+		FROM room_members rm
+		JOIN users u ON u.id=rm.user_id
+		WHERE rm.room_id=?
+		ORDER BY rm.role='host' DESC, rm.joined_at ASC
+	`).all(room.id);
+	const questions = db.prepare(`
+		SELECT q.*, COALESCE(q.imported_username, u.username) AS username, COALESCE(q.imported_answered_by_name, au.username) AS answered_by_name
+		FROM room_questions q
+		LEFT JOIN users u ON u.id=q.user_id
+		LEFT JOIN users au ON au.id=q.answered_by
+		WHERE q.room_id=?
+		ORDER BY q.id ASC
+	`).all(room.id).map((q) => ({
+		id: q.id,
+		username: q.username || "Unknown",
+		content: q.content || "",
+		status: q.status || "pending",
+		answer: q.answer || null,
+		answerText: q.answer ? ANSWER_TEXT[q.answer] : null,
+		answeredByName: q.answered_by_name || null,
+		isKey: Number(q.is_key || 0) === 1,
+		createdAt: q.created_at,
+		answeredAt: q.answered_at,
+	}));
+	const events = db.prepare(`
+		SELECT e.*, COALESCE(e.display_username, u.username, '系统') AS username, COALESCE(q.is_key, 0) AS is_key
+		FROM room_events e
+		LEFT JOIN users u ON u.id=e.user_id
+		LEFT JOIN room_questions q ON q.id=e.question_id
+		WHERE e.room_id=?
+		ORDER BY e.id ASC
+	`).all(room.id).map((e) => ({
+		id: e.id,
+		type: e.type,
+		username: e.username || "系统",
+		content: e.content || "",
+		replyToEventId: e.reply_to_event_id || null,
+		reply: normalizeReplySnapshot(e.reply_snapshot_json),
+		questionId: e.question_id || null,
+		answer: e.answer || null,
+		answerText: e.answer ? ANSWER_TEXT[e.answer] : null,
+		isKey: Number(e.is_key || 0) === 1,
+		images: jsonParseArray(e.images_json),
+		createdAt: e.created_at,
+	}));
+	const bottomReveals = db.prepare(`
+		SELECT u.username, r.created_at
+		FROM room_bottom_reveals r
+		JOIN users u ON u.id=r.user_id
+		WHERE r.room_id=?
+		ORDER BY r.created_at ASC
+	`).all(room.id);
+	const finishVotes = db.prepare(`
+		SELECT u.username, v.vote, v.created_at, v.updated_at
+		FROM room_finish_votes v
+		JOIN users u ON u.id=v.user_id
+		WHERE v.room_id=?
+		ORDER BY v.updated_at ASC
+	`).all(room.id);
+
+	return {
+		kind: "turtle-soup-room-snapshot",
+		version: 2,
+		exportedAt: new Date().toISOString(),
+		exportedBy: user ? { id: user.id, username: user.username } : null,
+		room: {
+			code: room.code,
+			status: room.status,
+			aiHostEnabled: Number(room.ai_host_enabled || 0) === 1,
+			hostUsername: Number(room.ai_host_enabled || 0) === 1 ? "AI主持人" : (host?.username || null),
+			createdAt: room.created_at,
+			updatedAt: room.updated_at,
+			lastActivityAt: room.last_activity_at,
+		},
+		soup: soup ? {
+			id: soup.id,
+			title: soup.title,
+			surface: soup.surface,
+			bottom: soup.bottom,
+			hasHostManual: !!soup.has_host_manual,
+			hostManual: soup.host_manual || "",
+			authorName: soup.author_name || "Unknown",
+			isAnonymous: !!soup.is_anonymous,
+			visibility: soup.visibility,
+			status: soup.status,
+			tags: String(soup.tag_names || "").split("、").filter(Boolean),
+		} : null,
+		members,
+		questions,
+		events,
+		bottomReveals,
+		finishVotes,
+	};
+}
+
+function exportSnapshot(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	const user = req.session.user;
+	if (!isHost(room, user) && !isAdmin(user) && !isAiHostEnabled(room) && room.status !== "finished") {
+		return res.status(403).json({ message: "只有主持人、管理员或已完结/AI主持人房间可以导出快照" });
+	}
+	const db = getDb();
+	const snapshot = buildRoomSnapshot(db, room, user);
+	const filename = `turtle-room-snapshot-${room.code}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+	res.setHeader("Content-Type", "application/json; charset=utf-8");
+	res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+	return res.send(JSON.stringify(snapshot, null, 2));
+}
+
+function findUserIdByUsername(db, username) {
+	const name = String(username || "").trim();
+	if (!name || name === "系统" || name === "AI主持人") return null;
+	return db.prepare(`SELECT id FROM users WHERE username=?`).get(name)?.id || null;
+}
+
+function getOrCreateSnapshotSoup(db, snapshot, userId) {
+	const soup = snapshot?.soup;
+	if (!soup) return null;
+	const sourceId = Number(soup.id);
+	if (Number.isFinite(sourceId)) {
+		const existing = db.prepare(`SELECT id FROM soups WHERE id=?`).get(sourceId);
+		if (existing) return existing.id;
+	}
+	const title = asSnapshotString(soup.title, 120) || "导入的海龟汤";
+	const surface = asSnapshotString(soup.surface, 5000) || "（快照未包含汤面）";
+	const bottom = asSnapshotString(soup.bottom, 20000) || "（快照未包含汤底）";
+	const hostManual = asSnapshotString(soup.hostManual, 20000);
+	const info = db.prepare(`
+		INSERT INTO soups (title, surface, bottom, has_host_manual, host_manual, author_id, is_anonymous, visibility, status)
+		VALUES (?, ?, ?, ?, ?, ?, 1, 'private', 'approved')
+	`).run(title, surface, bottom, hostManual ? 1 : 0, hostManual || null, userId || null);
+	const soupId = info.lastInsertRowid;
+	const tagNames = Array.isArray(soup.tags) ? soup.tags.map((t) => asSnapshotString(t, 30)).filter(Boolean).slice(0, 20) : [];
+	for (const [index, tagName] of tagNames.entries()) {
+		db.prepare(`INSERT OR IGNORE INTO tags (name, sort_order, is_hidden) VALUES (?, ?, 0)`).run(tagName, (index + 1) * 10);
+		const tag = db.prepare(`SELECT id FROM tags WHERE name=?`).get(tagName);
+		if (tag) db.prepare(`INSERT OR IGNORE INTO soup_tags (soup_id, tag_id) VALUES (?, ?)`).run(soupId, tag.id);
+	}
+	return soupId;
+}
+
+function importSnapshot(req, res) {
+	const room = requireRoom(req, res);
+	if (!room) return;
+	const user = req.session.user;
+	if (!canImportSnapshot(room, user)) return res.status(403).json({ message: "只有当前主持人、管理员，或无主持人的房间可以导入快照" });
+	const snapshot = req.body?.snapshot || req.body;
+	if (!snapshot || snapshot.kind !== "turtle-soup-room-snapshot") {
+		return res.status(400).json({ message: "快照文件格式不正确" });
+	}
+	const db = getDb();
+	const status = ["waiting", "playing", "finished"].includes(snapshot.room?.status) ? snapshot.room.status : "waiting";
+	const aiHostEnabled = snapshot.room?.aiHostEnabled ? 1 : 0;
+	const tx = db.transaction(() => {
+		const soupId = getOrCreateSnapshotSoup(db, snapshot, user.id);
+		const finalStatus = soupId ? status : "waiting";
+		db.prepare(`DELETE FROM room_events WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_questions WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_bottom_reveals WHERE room_id=?`).run(room.id);
+		db.prepare(`DELETE FROM room_finish_votes WHERE room_id=?`).run(room.id);
+		db.prepare(`UPDATE room_members SET role='viewer' WHERE room_id=?`).run(room.id);
+		if (aiHostEnabled) {
+			db.prepare(`UPDATE rooms SET soup_id=?, status=?, host_user_id=NULL, ai_host_enabled=1, updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(soupId, finalStatus, room.id);
+		} else {
+			db.prepare(`UPDATE rooms SET soup_id=?, status=?, host_user_id=?, ai_host_enabled=0, updated_at=${nowSqlExpr()}, last_activity_at=${nowSqlExpr()} WHERE id=?`).run(soupId, finalStatus, user.id, room.id);
+			db.prepare(`INSERT OR IGNORE INTO room_members (room_id, user_id, role) VALUES (?, ?, 'host')`).run(room.id, user.id);
+			db.prepare(`UPDATE room_members SET role='host', last_seen_at=${nowSqlExpr()} WHERE room_id=? AND user_id=?`).run(room.id, user.id);
+		}
+
+		const questionMap = new Map();
+		const questions = Array.isArray(snapshot.questions) ? snapshot.questions.slice(0, 1000) : [];
+		for (const q of questions) {
+			const answer = ANSWER_VALUES.has(q.answer) ? q.answer : null;
+			const qStatus = answer ? "answered" : (q.status === "pending" ? "pending" : "pending");
+			const qUserId = findUserIdByUsername(db, q.username) || user.id;
+			const info = db.prepare(`
+				INSERT INTO room_questions (room_id, user_id, content, status, answer, answered_by, is_key, imported_username, imported_answered_by_name, created_at, answered_at)
+				VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
+			`).run(
+				room.id,
+				qUserId,
+				asSnapshotString(q.content, 200) || "（空问题）",
+				qStatus,
+				answer,
+				q.isKey ? 1 : 0,
+				asSnapshotString(q.username, 80) || null,
+				asSnapshotString(q.answeredByName, 80) || null,
+				asSnapshotString(q.createdAt, 32) || new Date().toISOString().slice(0, 19).replace("T", " "),
+				asSnapshotString(q.answeredAt, 32) || null,
+			);
+			questionMap.set(Number(q.id), info.lastInsertRowid);
+		}
+
+		const eventMap = new Map();
+		const events = Array.isArray(snapshot.events) ? snapshot.events.slice(0, 2000) : [];
+		for (const e of events) {
+			const oldQuestionId = Number(e.questionId);
+			const newQuestionId = Number.isFinite(oldQuestionId) ? (questionMap.get(oldQuestionId) || null) : null;
+			const oldReplyToEventId = Number(e.replyToEventId);
+			const newReplyToEventId = Number.isFinite(oldReplyToEventId) ? (eventMap.get(oldReplyToEventId) || null) : null;
+			const answer = ANSWER_VALUES.has(e.answer) ? e.answer : null;
+			const images = Array.isArray(e.images) ? e.images.map((img) => asSnapshotString(img, 500)).filter(Boolean).slice(0, 10) : [];
+			const replySnapshot = normalizeReplySnapshot(e.reply) || null;
+			const info = db.prepare(`
+				INSERT INTO room_events (room_id, user_id, type, content, question_id, answer, images_json, display_username, reply_to_event_id, reply_snapshot_json, created_at)
+				VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`).run(
+				room.id,
+				asSnapshotString(e.type, 30) || "system",
+				asSnapshotString(e.content, 2000),
+				newQuestionId,
+				answer,
+				images.length ? JSON.stringify(images) : null,
+				asSnapshotString(e.username, 80) || "系统",
+				newReplyToEventId,
+				replySnapshot ? JSON.stringify(replySnapshot) : null,
+				asSnapshotString(e.createdAt, 32) || new Date().toISOString().slice(0, 19).replace("T", " "),
+			);
+			if (Number.isFinite(Number(e.id))) eventMap.set(Number(e.id), info.lastInsertRowid);
+		}
+
+		const reveals = Array.isArray(snapshot.bottomReveals) ? snapshot.bottomReveals.slice(0, 1000) : [];
+		for (const reveal of reveals) {
+			const revealUserId = findUserIdByUsername(db, reveal.username);
+			if (revealUserId) db.prepare(`INSERT OR IGNORE INTO room_bottom_reveals (room_id, user_id, created_at) VALUES (?, ?, ?)`).run(room.id, revealUserId, asSnapshotString(reveal.created_at || reveal.createdAt, 32) || new Date().toISOString().slice(0, 19).replace("T", " "));
+		}
+		const votes = Array.isArray(snapshot.finishVotes) ? snapshot.finishVotes.slice(0, 1000) : [];
+		for (const vote of votes) {
+			const voteUserId = findUserIdByUsername(db, vote.username);
+			if (voteUserId) db.prepare(`INSERT OR IGNORE INTO room_finish_votes (room_id, user_id, vote, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).run(room.id, voteUserId, vote.vote === "no" ? "no" : "yes", asSnapshotString(vote.created_at || vote.createdAt, 32) || new Date().toISOString().slice(0, 19).replace("T", " "), asSnapshotString(vote.updated_at || vote.updatedAt, 32) || new Date().toISOString().slice(0, 19).replace("T", " "));
+		}
+		addEvent(db, room.id, user.id, "system", { content: `${user.username} 导入了房间快照，已恢复游玩进度` });
+	});
+	tx();
+	return res.json({ ok: true });
+}
+
 function finishSoup(req, res) {
 	const room = requireRoom(req, res);
 	if (!room) return;
@@ -1002,6 +1342,7 @@ module.exports = {
 	startAiSoup,
 	postQuestion,
 	answerQuestion,
+	toggleKeyQuestion,
 	deleteHistoryEvent,
 	postHint,
 	postChat,
@@ -1009,6 +1350,8 @@ module.exports = {
 	revealAiBottom,
 	voteFinishAiRoom,
 	resetAiRoom,
+	exportSnapshot,
+	importSnapshot,
 	finishSoup,
 	resetRoom,
 };

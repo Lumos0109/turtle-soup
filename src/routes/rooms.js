@@ -47,12 +47,15 @@ router.post("/:code/start", requireLogin, roomController.startSoup);
 router.post("/:code/start-ai", requireLogin, roomController.startAiSoup);
 router.post("/:code/question", requireLogin, roomController.postQuestion);
 router.post("/:code/answer", requireLogin, roomController.answerQuestion);
+router.post("/:code/questions/:questionId/key", requireLogin, roomController.toggleKeyQuestion);
 router.post("/:code/history/:eventId/delete", requireLogin, roomController.deleteHistoryEvent);
 router.post("/:code/chat", requireLogin, roomController.postChat);
 router.post("/:code/sticker", requireLogin, roomController.postSticker);
 router.post("/:code/reveal-bottom", requireLogin, roomController.revealAiBottom);
 router.post("/:code/finish-vote", requireLogin, roomController.voteFinishAiRoom);
 router.post("/:code/reset-ai", requireLogin, roomController.resetAiRoom);
+router.get("/:code/snapshot", requireLogin, roomController.exportSnapshot);
+router.post("/:code/snapshot", requireLogin, roomController.importSnapshot);
 router.post("/:code/finish", requireLogin, roomController.finishSoup);
 router.post("/:code/reset", requireLogin, roomController.resetRoom);
 router.post(
